@@ -386,7 +386,6 @@ def get_asset_data(asset=None):
     return data
 
 
-<<<<<<< HEAD
 def get_data_hierarchical_attr(entity, attr_name):
     vp_attr = 'visualParent'
     data = entity['data']
@@ -404,8 +403,6 @@ def get_data_hierarchical_attr(entity, attr_name):
         return None
 
 
-=======
->>>>>>> develop
 def get_avalon_project_config_schema():
     schema = 'avalon-core:config-1.0'
     return schema
