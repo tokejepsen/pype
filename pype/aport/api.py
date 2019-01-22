@@ -5,15 +5,15 @@ import tempfile
 
 import pico
 from pico import PicoApp
-from pico.decorators import request_args, set_cookie, delete_cookie, stream
-from pico.decorators import header, cookie
-
-from werkzeug.exceptions import Unauthorized, ImATeapot, BadRequest
+# from pico.decorators import request_args, set_cookie, delete_cookie, stream
+# from pico.decorators import header, cookie
+#
+# from werkzeug.exceptions import Unauthorized, ImATeapot, BadRequest
 
 from avalon import api as avalon
-from avalon import io
-
-import pyblish.api as pyblish
+# from avalon import io
+#
+# import pyblish.api as pyblish
 
 from app.api import forward
 from pype import api as pype
@@ -23,8 +23,8 @@ log = pype.Logger.getLogger(__name__, "aport")
 
 
 SESSION = avalon.session
-if not SESSION:
-    io.install()
+# if not SESSION:
+#     io.install()
 
 
 @pico.expose()
@@ -52,7 +52,8 @@ def publish(json_data_path, gui):
 
     staging_dir = tempfile.mkdtemp(prefix="pype_aport_").replace("\\", "/")
     log.info("staging_dir: {}".format(staging_dir))
-    return_json_path = os.path.join(staging_dir, "return_data.json").replace("\\", "/")
+    return_json_path = os.path.join(
+        staging_dir, "return_data.json").replace("\\", "/")
 
     log.info("avalon.session is: \n{}".format(SESSION))
 
@@ -119,8 +120,8 @@ def register_plugin_path(publish_path):
     deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
-            os.environ["PUBLISH_PATH"].split(os.pathsep) +
-            [publish_path.replace("\\", "/")]
+            os.environ["PUBLISH_PATH"].split(os.pathsep)
+            + [publish_path.replace("\\", "/")]
         )
     else:
         os.environ["PUBLISH_PATH"] = publish_path

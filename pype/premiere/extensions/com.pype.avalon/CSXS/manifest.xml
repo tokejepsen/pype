@@ -23,7 +23,7 @@ accordance with the terms of the Adobe license agreement accompanying * it. If y
 			<DispatchInfo >
 				<Resources>
 					<MainPath>./index_remote.html</MainPath>
-					<ScriptPath>./jsx/pypeAvalon.jsx</ScriptPath>
+					<ScriptPath>./pypeAvalon.jsx</ScriptPath>
 					<CEFCommandLine>
 						<Parameter>--enable-nodejs</Parameter>
 						<Parameter>--disable-application-cache</Parameter>
