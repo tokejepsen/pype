@@ -39,10 +39,14 @@ if __name__ == '__main__':
             module_name += ':app'
         app = import_string(module_name)
 
-    html_dirs = os.getenv("PICO_HTML_DIR") or None
+    html_dirs = os.getenv("PICO_HTML_DIR") or {'/': 'static'}
     if html_dirs:
         html_dirs = {"/{}".format(os.path.basename(p)): p.replace("\\", "/")
                      for p in html_dirs.split(os.pathsep)}
+
+        for d, p in html_dirs.items():
+            assert os.path.isdir(
+                p), "Not existing directory at path: {}".format(p)
 
     log.info("> html_dirs: {}".format(html_dirs))
     ip = os.getenv("PICO_IP", '127.0.0.1')

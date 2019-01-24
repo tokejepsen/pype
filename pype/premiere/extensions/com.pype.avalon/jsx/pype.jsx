@@ -2,8 +2,6 @@ if (typeof (pype) == 'undefined') {
   pype = {};
 }
 
-var app = app
-
 pype = {
 
   importClips: function (obj) {
@@ -15,14 +13,12 @@ pype = {
     return path.replace(new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), '')
   },
 
-  getEnv: function () {
+  getWorkfile: function () {
     app.enableQE();
     var obj = {
-      os: qe.platform,
-      name: app.project.name,
-      path: pype.convertPathString(app.project.path)
+      workfile: app.project.name,
+      workdir: pype.convertPathString(app.project.path)
     };
-    pype.log(JSON.stringify(obj));
     return JSON.stringify(obj);
   },
 
@@ -268,11 +264,10 @@ pype = {
   },
 
   getImageSize: function () {
-    var size = {
+    return {
       h: app.project.activeSequence.frameSizeHorizontal,
       v: app.project.activeSequence.frameSizeVertical
-    }
-    return JSON.stringify(size);
+    };
   },
 
   getSelectedItems: function () {
@@ -288,21 +283,20 @@ pype = {
         if (clip.isSelected()) {
           var inter = clip.projectItem.getFootageInterpretation();
           var clipData = {
-            'name': clip.name,
-            'layer': seq.videoTracks[l].name,
-            'sequence': seq.name,
-            'size': pype.getImageSize(),
-            'label': clip.projectItem.getColorLabel(),
+            'clip.name': clip.name,
+            'layer.name': seq.videoTracks[l].name,
+            'sequence.name': seq.name,
+            'sequence.size': pype.getImageSize(),
+            'source.label': clip.projectItem.getColorLabel(),
             'clip.start': clip.inPoint.seconds,
             'clip.end': clip.duration.seconds,
             'source.start': clip.start.seconds,
             'source.end': clip.end.seconds,
-            'path': pype.convertPathString(clip.projectItem.getMediaPath()),
-            'fps': (1 / inter.frameRate),
-            'par': inter.pixelAspectRatio
+            'source.path': pype.convertPathString(clip.projectItem.getMediaPath()),
+            'source.fps': (1 / inter.frameRate),
+            'source.par': inter.pixelAspectRatio
           };
           selected.push(clipData);
-          // $.writeln('\n' + clip.name + ' selected');
         }
       }
     }
@@ -310,11 +304,12 @@ pype = {
   },
 
   log: function (info) {
-    app.setSDKEventMessage(info, 'info');
+    app.setSDKEventMessage(JSON.stringify(info), 'info');
   },
 
   message: function (msg) {
     $.writeln(msg); // Using '$' object will invoke ExtendScript Toolkit, if installed.
   }
 
-}
+};
+// pype.getSelectedItems()

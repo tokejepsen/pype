@@ -1,8 +1,36 @@
 /* global CSInterface, $, querySelector, api, displayResult */
 var csi = new CSInterface();
+var output = document.getElementById('output');
 
+var rootFolderPath = csi.getSystemPath(SystemPath.EXTENSION);
+var timecodes = cep_node.require('node-timecodes');
+var process = cep_node.require('process');
+
+
+function getEnv() {
+  csi.evalScript('pype.getWorkfile();', function (result) {
+    window.ENV = process.env;
+    var resultData = JSON.parse(result);
+    for (key in resultData) {
+      window.ENV[key] = resultData[key]
+    };
+  });
+}
+
+function displayResult(r) {
+  console.log(r);
+  csi.evalScript('$._PPP_.updateEventPanel( "' + r + '" )');
+  output.classList.remove("error");
+  output.innerText = JSON.stringify(r);
+}
+
+function displayError(e) {
+  output.classList.add("error");
+  output.innerText = e.message;
+}
 
 function loadJSX() {
+  getEnv();
   csi.evalScript('$._PPP_.logConsoleOutput()');
   // get the appName of the currently used app. For Premiere Pro it's "PPRO"
   var appName = csi.hostEnvironment.appName;
@@ -27,7 +55,7 @@ function evalScript(script) {
   var callback = function (result) {
     displayResult(result)
   };
-  new CSInterface().evalScript(script, callback);
+  csi.evalScript(script, callback);
 }
 
 function deregister() {
@@ -54,6 +82,13 @@ function context() {
   var task = $('input[name=task]').value;
   var app = $('input[name=app]').value;
   api.context(project, asset, task, app).then(displayResult);
+}
+
+function tc(timecode) {
+  var seconds = timecodes.toSeconds(timecode);
+  var timec = timecodes.fromSeconds(seconds);
+  displayResult(seconds);
+  displayResult(timec);
 }
 
 // bind buttons
@@ -84,13 +119,17 @@ $('#btn-get-selected').click(function () {
 });
 
 $('#btn-get-env').click(function () {
-  evalScript('pype.getEnv();');
+  displayResult(window.ENV);
 });
 
 $('#btn-get-projectitems').click(function () {
   evalScript('pype.getProjectItems();');
 });
 
-$('#btn-get-projectitems').click(function () {
+$('#btn-get-frame').click(function () {
   evalScript('$._PPP_.exportCurrentFrameAsPNG();');
+});
+
+$('#btn-tc').click(function () {
+  tc('00:23:47:10');
 });
