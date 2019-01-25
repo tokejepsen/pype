@@ -133,3 +133,7 @@ $('#btn-get-frame').click(function () {
 $('#btn-tc').click(function () {
   tc('00:23:47:10');
 });
+
+$('#btn-generateRequest').click(function () {
+  evalScript('pype.getPyblishRequest();');
+});

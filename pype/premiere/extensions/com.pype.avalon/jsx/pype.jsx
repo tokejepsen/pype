@@ -1,8 +1,12 @@
-if (typeof (pype) == 'undefined') {
-  pype = {};
-}
-
-pype = {
+/* global app, qe, $, ProjectItemType */
+/*
+              .____ _ ___ .____.______
+--- - - --   /  .  \//  //  .  \  ___/ --- ---- - -
+ - --- ---  /  ____/ __//  ____/ /_/  --- - -- ---
+           /__/ /___/  /__/ /______/
+          ._- -=[ PyPe 4 3veR ]=- -_.
+*/
+var pype = {
 
   importClips: function (obj) {
     app.project.importFiles(obj.paths);
@@ -10,7 +14,9 @@ pype = {
   },
 
   convertPathString: function (path) {
-    return path.replace(new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), '')
+    return path.replace(
+      new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), ''
+    );
   },
 
   getWorkfile: function () {
@@ -74,7 +80,7 @@ pype = {
       }
     }
 
-    function objectIsSequence() {
+    function objectIsSequence () {
       var isSequence = false;
 
       for (var s = 0; s < app.project.sequences.numSequences; s++) {
@@ -87,7 +93,7 @@ pype = {
     }
 
     // walk through bins recursively
-    function walkBins(item, source, rootBinCounter) {
+    function walkBins (item, source, rootBinCounter) {
       app.enableQE();
       // pype.log('\nget clips for bin  ' + item.name  );
 
@@ -113,7 +119,7 @@ pype = {
     }
 
     // walk through sequences and video & audiotracks to find clip names in sequences
-    function getClipNames(seq, sequences) {
+    function getClipNames (seq, sequences) {
       for (var k = 0; k < sequences.length; k++) {
         //  pype.log('getClipNames seq.guid ' + seq.guid  );
         // pype.log(' getClipNames sequences[k].id ' +  sequences[k].sequenceID  );
@@ -211,7 +217,7 @@ pype = {
     }
 
     // walk through bins recursively
-    function walkBins(bin) {
+    function walkBins (bin) { // eslint-disable-line no-unused-vars
       app.enableQE();
 
       // $.writeln('bin.name + ' has ' + bin.children.numItems);
@@ -281,26 +287,121 @@ pype = {
       for (var m = 0; m < numOfClips; m++) {
         var clip = seq.videoTracks[l].clips[m];
         if (clip.isSelected()) {
-          var inter = clip.projectItem.getFootageInterpretation();
-          var clipData = {
-            'clip.name': clip.name,
-            'layer.name': seq.videoTracks[l].name,
-            'sequence.name': seq.name,
-            'sequence.size': pype.getImageSize(),
-            'source.label': clip.projectItem.getColorLabel(),
-            'clip.start': clip.inPoint.seconds,
-            'clip.end': clip.duration.seconds,
-            'source.start': clip.start.seconds,
-            'source.end': clip.end.seconds,
-            'source.path': pype.convertPathString(clip.projectItem.getMediaPath()),
-            'source.fps': (1 / inter.frameRate),
-            'source.par': inter.pixelAspectRatio
-          };
-          selected.push(clipData);
+          selected.push(
+            {
+              'clip': clip,
+              'sequence': seq,
+              'videoTrack': seq.videoTracks[l]
+            }
+          );
         }
       }
     }
-    return JSON.stringify(selected);
+    return selected;
+  },
+
+  /**
+   * Return instance representation of clip
+   * @param clip {object} - index of clip on videoTrack
+   * @param sequence {object Sequence} - Sequence clip is in
+   * @param videoTrack {object VideoTrack} - VideoTrack clip is in
+   * @return {Object}
+   */
+  getClipAsInstance: function (clip, sequence, videoTrack) {
+    // var clip = sequence.videoTracks.clips[clipIdx];
+    if ((clip.projectItem.type !== ProjectItemType.CLIP) &&
+        (clip.mediaType !== 'Video')) {
+      return false;
+    }
+
+    var interpretation = clip.projectItem.getFootageInterpretation();
+    var instance = {};
+    instance['publish'] = true;
+    instance['family'] = 'clip';
+    instance['name'] = clip.name;
+    instance['filePath'] = pype.convertPathString(clip.projectItem.getMediaPath());
+    // TODO: tags - wtf and how to get them
+    instance['tags'] = [
+      {task: 'compositing'},
+      {task: 'roto'},
+      {task: '3d'}
+    ];
+    instance['layer'] = videoTrack.name;
+    instance['sequence'] = sequence.name;
+    // TODO: is it original format of clip or format we want to transcode it to?
+    instance['representation'] = 'mov';
+    // metadata
+    var metadata = {};
+    // TODO: how to get colorspace clip info
+    metadata['colorspace'] = 'bt.709';
+    // frameRate in Premiere is fraction of second, to get "normal fps",
+    // we need 1/x
+    metadata['fps'] = (1 / interpretation.frameRate);
+    var sequenceSize = pype.getImageSize();
+    metadata['format.width'] = sequenceSize.h;
+    metadata['format.height'] = sequenceSize.v;
+    metadata['format.pixelaspect'] = interpretation.pixelAspectRatio;
+    // TODO: change seconds to timecode
+    metadata['source.start'] = clip.start.seconds;
+    metadata['source.end'] = clip.end.seconds;
+    metadata['source.duration'] = clip.duration.seconds;
+    metadata['clip.start'] = clip.inPoint.seconds;
+    metadata['clip.end'] = clip.outPoint.seconds;
+
+    // get linked clips
+    var linkedItems = clip.getLinkedItems();
+    if (linkedItems) {
+      for (var li = 0; li < linkedItems.numItems; li++) {
+        if (linkedItems[li].mediaType === 'Audio') {
+          var audioClip = linkedItems[li];
+          // linked clip is audio
+          // check in and out are same
+          if ((audioClip.inPoint.seconds === clip.inPoint.seconds) &&
+             (audioClip.outPoint.seconds === clip.outPoint.seconds)) {
+            metadata['hasAudio'] = true;
+            // TODO: find out how to get those without dealing with Qe
+            metadata['clip.audio'] = {'audioChanels': 2, 'audioRate': 48000};
+            var timelineAudio = [];
+            var audioMetadata = [];
+            audioMetadata['audioChannels'] = 2;
+            audioMetadata['audioRate'] = 48000;
+            audioMetadata['source.start'] = audioClip.start.seconds;
+            audioMetadata['source.end'] = audioClip.end.seconds;
+            audioMetadata['source.duration'] = audioClip.duration.seconds;
+            audioMetadata['clip.start'] = audioClip.inPoint.seconds;
+            audioMetadata['clip.end'] = audioClip.outPoint.seconds;
+            timelineAudio.push(audioMetadata);
+            metadata['timeline.audio'] = timelineAudio;
+          }
+        }
+      }
+    }
+    // set metadata to instance
+    instance['metadata'] = metadata;
+    return instance;
+  },
+
+  getSelectedClipsAsInstances: function () {
+    var instances = [];
+    var selected = pype.getSelectedItems();
+    for (var s = 0; s < selected.length; s++) {
+      var instance = pype.getClipAsInstance(
+        selected[s].clip,
+        selected[s].sequence,
+        selected[s].videoTrack
+      );
+      if (instance !== false) {
+        instances.push(instance);
+      }
+    }
+    return instances;
+  },
+
+  getPyblishRequest: function () {
+    var request = {};
+    var instances = pype.getSelectedClipsAsInstances();
+    request['instances'] = instances;
+    return JSON.stringify(request);
   },
 
   log: function (info) {
