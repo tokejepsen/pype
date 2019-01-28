@@ -6,8 +6,8 @@
            /__/ /___/  /__/ /______/
           ._- -=[ PyPe 4 3veR ]=- -_.
 */
-var pype = {
 
+pype = {
   importClips: function (obj) {
     app.project.importFiles(obj.paths);
     return JSON.stringify(obj);
@@ -413,4 +413,3 @@ var pype = {
   }
 
 };
-// pype.getSelectedItems()

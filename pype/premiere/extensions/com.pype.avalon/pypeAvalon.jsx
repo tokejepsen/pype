@@ -15,6 +15,10 @@ if (typeof ($) == 'undefined') {
   $ = {};
 }
 
+if (typeof (pype) == 'undefined') {
+  var pype = {};
+}
+
 function keepExtention() {
   return app.setExtensionPersistent("com.pype.avalon", 0);
 }
@@ -25,8 +29,8 @@ $._ext = {
   // Evaluate a file and catch the exception.
   evalFile: function (path) {
     try {
-      $.writeln(path);
       $.evalFile(path);
+      $.writeln(path);
     } catch (e) {
       $.writeln(e);
       alert("Exception:" + e);

@@ -18,8 +18,8 @@ function getEnv() {
 }
 
 function displayResult(r) {
-  console.log(r);
-  csi.evalScript('$._PPP_.updateEventPanel( "' + r + '" )');
+  console.log(JSON.stringify(r));
+  csi.evalScript('$._PPP_.updateEventPanel( "' + JSON.stringify(r) + '" )');
   output.classList.remove("error");
   output.innerText = JSON.stringify(r);
 }
@@ -30,8 +30,6 @@ function displayError(e) {
 }
 
 function loadJSX() {
-  getEnv();
-  csi.evalScript('$._PPP_.logConsoleOutput()');
   // get the appName of the currently used app. For Premiere Pro it's "PPRO"
   var appName = csi.hostEnvironment.appName;
   var extensionPath = csi.getSystemPath(SystemPath.EXTENSION);
@@ -43,9 +41,10 @@ function loadJSX() {
   // load JSX scripts based on appName
   var extensionRootApp = extensionPath + '/jsx/' + appName + '/';
   csi.evalScript('$._ext.evalFiles("' + extensionRootApp + '")');
+  csi.evalScript('$._PPP_.logConsoleOutput()');
   csi.evalScript('$._PPP_.updateEventPanel( "' + "all plugins are loaded" + '" )');
   csi.evalScript('$._PPP_.updateEventPanel( "' + "testing function done" + '" )');
-
+  getEnv();
 }
 
 // run all at loading
@@ -53,7 +52,7 @@ loadJSX()
 
 function evalScript(script) {
   var callback = function (result) {
-    displayResult(result)
+    displayResult(result);
   };
   csi.evalScript(script, callback);
 }
