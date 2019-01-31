@@ -9,19 +9,27 @@ var process = cep_node.require('process');
 
 function getEnv() {
   csi.evalScript('pype.getWorkfile();', function (result) {
+    process.env.EXTENSION_PATH = rootFolderPath
     window.ENV = process.env;
     var resultData = JSON.parse(result);
     for (key in resultData) {
-      window.ENV[key] = resultData[key]
+      window.ENV[key] = resultData[key];
     };
+    csi.evalScript('pype.setEnvs(' + JSON.stringify(window.ENV) + ')');
+  });
+}
+
+function renderClips() {
+  csi.evalScript('pype.transcodeExternal(' + rootFolderPath + ');', function (result) {
+    displayResult(result);
   });
 }
 
 function displayResult(r) {
-  console.log(JSON.stringify(r));
-  csi.evalScript('$._PPP_.updateEventPanel( "' + JSON.stringify(r) + '" )');
+  console.log(r);
+  csi.evalScript('$.writeln( ' + JSON.stringify(r) + ' )');
   output.classList.remove("error");
-  output.innerText = JSON.stringify(r);
+  output.innerText = r;
 }
 
 function displayError(e) {
@@ -135,4 +143,8 @@ $('#btn-tc').click(function () {
 
 $('#btn-generateRequest').click(function () {
   evalScript('pype.getPyblishRequest();');
+});
+
+$('#btn-newWorkfileVersion').click(function () {
+  evalScript('pype.versionUpWorkFile();');
 });

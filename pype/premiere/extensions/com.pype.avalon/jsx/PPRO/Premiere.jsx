@@ -657,7 +657,7 @@ $._PPP_ = {
             var jobID = app.encoder.encodeSequence(app.project.activeSequence,
               fullPathToFile,
               outPreset.fsName,
-              app.encoder.ENCODE_WORKAREA,
+              app.encoder.ENCODE_IN_TO_OUT,
               1); // Remove from queue upon successful completion?
             $._PPP_.updateEventPanel('jobID = ' + jobID);
             outPreset.close();
