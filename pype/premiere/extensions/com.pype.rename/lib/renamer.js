@@ -40,6 +40,19 @@ $('#btn-rename').click(function () {
   }
   var data = '';
   switch (mode) {
+    case 'seqRenameHierarchy':
+      data = {
+        'folder': $('#rpane-' + mode + ' input[name=renamer-folder]').val(),
+        'episode': $('#rpane-' + mode + ' input[name=renamer-episode]').val(),
+        'sequence': $('#rpane-' + mode + ' input[name=renamer-sequence]').val(),
+        'pattern': $('#rpane-' + mode + ' input[name=renamer-pattern]').val(),
+        'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
+        'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
+      };
+      csi.evalScript('renameSeqHierarchy(' + JSON.stringify(data) + ');', function (result) {
+        displayResults(result);
+      });
+      break;
     case 'seqRename':
       data = {
         'pattern': $('#rpane-' + mode + ' input[name=renamer-pattern]').val(),
