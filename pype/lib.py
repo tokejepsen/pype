@@ -442,14 +442,18 @@ def get_avalon_asset_template_schema():
 
 def get_avalon_database():
     if io._database is None:
-        project = os.environ.get('AVALON_PROJECT', '')
-        asset = os.environ.get('AVALON_ASSET', '')
-        silo = os.environ.get('AVALON_SILO', '')
-        os.environ['AVALON_PROJECT'] = project
-        os.environ['AVALON_ASSET'] = asset
-        os.environ['AVALON_SILO'] = silo
-        io.install()
+        set_io_database()
     return io._database
+
+
+def set_io_database():
+    project = os.environ.get('AVALON_PROJECT', '')
+    asset = os.environ.get('AVALON_ASSET', '')
+    silo = os.environ.get('AVALON_SILO', '')
+    os.environ['AVALON_PROJECT'] = project
+    os.environ['AVALON_ASSET'] = asset
+    os.environ['AVALON_SILO'] = silo
+    io.install()
 
 
 def get_all_avalon_projects():
@@ -459,3 +463,10 @@ def get_all_avalon_projects():
     for name in project_names:
         projects.append(db[name].find_one({'type': 'project'}))
     return projects
+
+
+def get_presets_path():
+    templates = os.environ['PYPE_STUDIO_TEMPLATES']
+    path_items = [templates, 'presets']
+    filepath = os.path.sep.join(path_items)
+    return filepath
