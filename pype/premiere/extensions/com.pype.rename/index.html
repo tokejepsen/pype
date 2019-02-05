@@ -57,9 +57,10 @@ _______________.___._____________________
                 data-mode="seqRename"
                 aria-haspopup="true"
                 aria-expanded="false">
-          Clip rename mode
+          Sequential Rename With hierarchy
         </button>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+          <a class="dropdown-item" data-mode="seqRenameHierarchy" href="#">Sequential Rename With hierarchy</a>
           <a class="dropdown-item" data-mode="seqRename" href="#">Sequential Rename</a>
           <a class="dropdown-item" data-mode="simpleRename" href="#">Simple Rename</a>
           <a class="dropdown-item" data-mode="findAndReplace" href="#">Find and Replace</a>
@@ -70,14 +71,56 @@ _______________.___._____________________
       </div>
       <hr />
       <div class="section" id="renamer-ui">
-        <div id="rpane-seqRename" class="pane" style="display: block;">
+        <div id="rpane-seqRenameHierarchy" class="pane" style="display: block;">
+          <!-- Sequentiol Rename mode -->
+          <h6>Sequential Rename with Hierarchy</h6>
+          <div class="input-group input-group-sm mb-3">
+            <div class="input-group-prepend">
+              <span class="input-group-text" id="basic-addon10">Folder</span>
+            </div>
+            <input type="text" class="form-control" name="renamer-folder" placeholder="f01" aria-label="Folder" aria-describedby="basic-addon10" value="f01">
+          </div>
+          <div class="input-group input-group-sm mb-3">
+            <div class="input-group-prepend">
+              <span class="input-group-text" id="basic-addon11">Episode</span>
+            </div>
+            <input type="text" class="form-control" name="renamer-episode" placeholder="ep01" aria-label="Episode" aria-describedby="basic-addon11" value="ep01">
+          </div>
+          <div class="input-group input-group-sm mb-3">
+            <div class="input-group-prepend">
+              <span class="input-group-text" id="basic-addon12">Sequence</span>
+            </div>
+            <input type="text" class="form-control" name="renamer-sequence" placeholder="sq01" aria-label="Sequence" aria-describedby="basic-addon12" value="sq01">
+          </div>
+          <p>Use tokens of above fields to reference its value.</p>
+          <div class="input-group input-group-sm mb-3">
+            <div class="input-group-prepend">
+              <span class="input-group-text" id="basic-addon13">Pattern</span>
+            </div>
+            <input type="text" class="form-control" name="renamer-pattern" placeholder="{folder}_{episode}_{sequence}_####" aria-label="Pattern" aria-describedby="basic-addon13" value="{folder}_{episode}_{sequence}_####">
+          </div>
+          <div class="input-group input-group-sm">
+            <div class="input-group-prepend">
+              <span class="input-group-text">Start # / Increment</span>
+            </div>
+            <input type="number" class="form-control" name="renamer-start" value="10">
+            <input type="number" class="form-control" name="renamer-inc" value="10">
+          </div>
+          <!--
+          <div class="form-check">
+            <input type="checkbox" disabled="disabled" class="form-check-input" id="renamer-incl-audio">
+            <label class="form-check-label" for="renamer-incl-audio">Include Clips From Audio Tracks</label>
+          </div>
+          -->
+        </div>
+        <div id="rpane-seqRename" class="pane">
           <!-- Sequentiol Rename mode -->
           <h6>Sequential Rename</h6>
           <div class="input-group input-group-sm mb-3">
             <div class="input-group-prepend">
-              <span class="input-group-text" id="basic-addon7">Pattern</span>
+              <span class="input-group-text" id="basic-addon8">Pattern</span>
             </div>
-            <input type="text" class="form-control" name="renamer-pattern" placeholder="s####" aria-label="Pattern" aria-describedby="basic-addon7" value="s####">
+            <input type="text" class="form-control" name="renamer-pattern" placeholder="s####" aria-label="Pattern" aria-describedby="basic-addon8" value="s####">
           </div>
           <div class="input-group input-group-sm">
             <div class="input-group-prepend">
@@ -95,11 +138,12 @@ _______________.___._____________________
         <div id="rpane-simpleRename" class="pane">
           <!-- Simple Rename mode -->
           <h6>Simple Rename</h6>
+          <p>Use <strong>{shot}</strong> token to reference current clip name.
           <div class="input-group input-group-sm mb-3">
             <div class="input-group-prepend">
-              <span class="input-group-text" id="basic-addon8">New Name</span>
+              <span class="input-group-text" id="basic-addon9">New Name</span>
             </div>
-            <input type="text" class="form-control" name="renamer-newName" placeholder="{shot}" aria-label="Pattern" aria-describedby="basic-addon8" value="{shot}">
+            <input type="text" class="form-control" name="renamer-newName" placeholder="{shot}" aria-label="Pattern" aria-describedby="basic-addon9" value="{shot}">
           </div>
         </div>
 
