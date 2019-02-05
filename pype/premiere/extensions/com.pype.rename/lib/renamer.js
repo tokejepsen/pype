@@ -49,7 +49,7 @@ $('#btn-rename').click(function () {
         'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
         'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
       };
-      csi.evalScript('renameSeqHierarchy(' + JSON.stringify(data) + ');', function (result) {
+      csi.evalScript('renamer.renameSeqHierarchy(' + JSON.stringify(data) + ');', function (result) {
         displayResults(result);
       });
       break;
@@ -59,7 +59,7 @@ $('#btn-rename').click(function () {
         'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
         'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
       };
-      csi.evalScript('renameSeq(' + JSON.stringify(data) + ');', function (result) {
+      csi.evalScript('renamer.renameSeq(' + JSON.stringify(data) + ');', function (result) {
         displayResults(result);
       });
       break;
@@ -67,7 +67,7 @@ $('#btn-rename').click(function () {
     case 'simpleRename':
       data = $('#rpane-' + mode + ' input[name=renamer-newName]').val();
       displayResults(data);
-      csi.evalScript('renameSimple("' + data + '");', function (result) {
+      csi.evalScript('renamer.renameSimple("' + data + '");', function (result) {
         displayResults(result);
       });
       break;
@@ -77,7 +77,7 @@ $('#btn-rename').click(function () {
         'find': $('#rpane-' + mode + ' input[name=renamer-find]').val(),
         'replaceWith': $('#rpane-' + mode + ' input[name=renamer-replace]').val()
       };
-      csi.evalScript('renameFindReplace(' + JSON.stringify(data) + ');', function (result) {
+      csi.evalScript('renamer.renameFindReplace(' + JSON.stringify(data) + ');', function (result) {
         displayResults(result);
       });
       break;
@@ -87,7 +87,7 @@ $('#btn-rename').click(function () {
       break;
 
     case 'clipRename':
-      csi.evalScript('renameClipRename();', function (result) {
+      csi.evalScript('renamer.renameClipRename();', function (result) {
         displayResults(result);
       });
       break;
@@ -99,7 +99,7 @@ $('#btn-rename').click(function () {
         stringCase = 1;
       }
       $('#renamer-case').val(caseMode);
-      csi.evalScript('renameChangeCase("' + stringCase + '");', function (result) {
+      csi.evalScript('renamer.renameChangeCase("' + stringCase + '");', function (result) {
         displayResults(result);
       });
       break;

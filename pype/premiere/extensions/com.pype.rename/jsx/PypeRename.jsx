@@ -48,6 +48,7 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
   var zero = res[1].replace(rx, '0');
   // iterate over selection
   var metadata = {};
+  metadata['clips'] = [];
   for (var c = 0; c < selected.length; c++) {
     // convert index to string
     var indexStr = '' + index;
@@ -228,15 +229,22 @@ renamer.setSequencePypeMetadata = function (sequence, data) { // eslint-disable-
   var metadata = sequence.projectItem.getProjectMetadata();
   var pypeData = 'pypeData';
   var xmp = new XMPMeta(metadata);
+  var dataJSON = JSON.stringify(data);
   app.project.addPropertyToProjectMetadataSchema(pypeData, 'Pype Data', 2);
 
-  var key; // eslint-disable-line no-unused-vars
-  for (key in data) {
-    xmp.setProperty(kPProPrivateProjectMetadataURI, pypeData, JSON.stringify(data));
-  }
+  xmp.setProperty(kPProPrivateProjectMetadataURI, pypeData, dataJSON);
 
   var str = xmp.serialize();
   sequence.projectItem.setProjectMetadata(str, [pypeData]);
+
+  // test
+
+  var newMetadata = sequence.projectItem.getProjectMetadata();
+  var newXMP = new XMPMeta(newMetadata);
+  var found = newXMP.doesPropertyExist(kPProPrivateProjectMetadataURI, pypeData);
+  if (!found) {
+    app.setSDKEventMessage('metadata not set', 'error');
+  }
 };
 
 /**
@@ -259,3 +267,9 @@ function keepExtension () {
 }
 
 keepExtension();
+// load the XMPScript library
+if (ExternalObject.AdobeXMPScript == undefined) {
+    ExternalObject.AdobeXMPScript = new ExternalObject("lib:AdobeXMPScript");
+}
+
+renamer.renameSeqHierarchy({'pattern': '{folder}_{episode}_{sequence}_####', 'increment': '10', 'start': '10', 'folder': 'f01', 'episode': 'ep01', 'sequence': 'sq01'})
