@@ -1,4 +1,4 @@
-/* global app, XMPMeta */
+/* global app, XMPMeta, ExternalObject */
 /* --------------------------------------
    -. ==  [ part 0f PyPE CluB ] == .-
 _______________.___._____________________
@@ -268,8 +268,6 @@ function keepExtension () {
 
 keepExtension();
 // load the XMPScript library
-if (ExternalObject.AdobeXMPScript == undefined) {
-    ExternalObject.AdobeXMPScript = new ExternalObject("lib:AdobeXMPScript");
+if (ExternalObject.AdobeXMPScript === undefined) {
+  ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
 }
-
-renamer.renameSeqHierarchy({'pattern': '{folder}_{episode}_{sequence}_####', 'increment': '10', 'start': '10', 'folder': 'f01', 'episode': 'ep01', 'sequence': 'sq01'})
