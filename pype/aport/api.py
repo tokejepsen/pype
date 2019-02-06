@@ -104,6 +104,13 @@ def context(project, asset, task, app):
 
 
 @pico.expose()
+def anatomy_fill(data):
+    pype.load_data_from_templates()
+    anatomy = pype.Anatomy
+    return anatomy.format(data)
+
+
+@pico.expose()
 def deregister_plugin_path():
     if os.getenv("PUBLISH_PATH", None):
         aport_plugin_path = [p.replace("\\", "/") for p in os.environ["PUBLISH_PATH"].split(
@@ -120,8 +127,8 @@ def register_plugin_path(publish_path):
     deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
-            os.environ["PUBLISH_PATH"].split(os.pathsep)
-            + [publish_path.replace("\\", "/")]
+            os.environ["PUBLISH_PATH"].split(os.pathsep) +
+            [publish_path.replace("\\", "/")]
         )
     else:
         os.environ["PUBLISH_PATH"] = publish_path

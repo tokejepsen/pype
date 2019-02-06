@@ -7,10 +7,15 @@
           ._- -=[ PyPe 4 3veR ]=- -_.
 */
 
+if (ExternalObject.AdobeXMPScript === undefined) {
+  ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
+}
 
 pype = {
   setEnvs: function (env) {
     for (key in env) {
+      // $.writeln(key);
+      // $.writeln(env[key])
       $.setenv(key, env[key])
     };
   },
@@ -361,19 +366,23 @@ pype = {
    * @param videoTrack {object VideoTrack} - VideoTrack clip is in
    * @return {Object}
    */
-  getClipAsInstance: function (clip, sequence, videoTrack) {
-    // var clip = sequence.videoTracks.clips[clipIdx];
+  getClipAsInstance: function (clip, sequence, videoTrack, pypeData) {
+    // var clip = sequence.videoTracks.clips[clipIdx]
     if ((clip.projectItem.type !== ProjectItemType.CLIP) &&
       (clip.mediaType !== 'Video')) {
       return false;
     }
-
+    var pdClips = pypeData.clips;
+    for (var c = 0; c < pdClips.length; c++) {
+      if (pdClips[c].name === clip.name) {
+        var hierarchy = pdClips[c].hierarchy;
+      }
+    }
     var interpretation = clip.projectItem.getFootageInterpretation();
     var instance = {};
     instance['publish'] = true;
     instance['family'] = 'clip';
     instance['name'] = clip.name;
-    instance['filePath'] = pype.convertPathString(clip.projectItem.getMediaPath());
     // TODO: tags - wtf and how to get them
     instance['tags'] = [
       {
@@ -386,73 +395,94 @@ pype = {
         task: '3d'
       }
     ];
-    instance['layer'] = videoTrack.name;
-    instance['sequence'] = sequence.name;
-    // TODO: is it original format of clip or format we want to transcode it to?
-    instance['representation'] = 'mov';
+    instance['hierarchy'] = hierarchy;
+    instance['representations'] = {
+      reference: 'h264',
+      thumbnail: 'png',
+      plates: 'prores422'
+    };
     // metadata
     var metadata = {};
     // TODO: how to get colorspace clip info
     metadata['colorspace'] = 'bt.709';
     // frameRate in Premiere is fraction of second, to get "normal fps",
     // we need 1/x
-    var settings = sequence.getSettings()
-    metadata['source.fps'] = (1 / interpretation.frameRate);
-    metadata['timeline.fps'] = (1 / settings.videoFrameRate.seconds);
+    var settings = sequence.getSettings();
     var sequenceSize = pype.getImageSize();
-    metadata['format.width'] = sequenceSize.h;
-    metadata['format.height'] = sequenceSize.v;
-    metadata['format.pixelaspect'] = interpretation.pixelAspectRatio;
-    // TODO: change seconds to timecode
-    metadata['source.start'] = clip.inPoint.seconds;
-    metadata['source.end'] = clip.outPoint.seconds;
-    metadata['source.duration'] = clip.duration.seconds;
-    metadata['clip.start'] = clip.start.seconds;
-    metadata['clip.end'] = clip.end.seconds;
+    metadata['ppro.videoTrack.name'] = videoTrack.name;
+    metadata['ppro.sequence.name'] = sequence.name;
+    metadata['ppro.source.fps'] = (1 / interpretation.frameRate);
+    metadata['ppro.timeline.fps'] = (1 / settings.videoFrameRate.seconds);
+    metadata['ppro.source.path'] = pype.convertPathString(clip.projectItem.getMediaPath());
+    metadata['ppro.format.width'] = sequenceSize.h;
+    metadata['ppro.format.height'] = sequenceSize.v;
+    metadata['ppro.format.pixelaspect'] = interpretation.pixelAspectRatio;
+    metadata['ppro.source.start'] = clip.inPoint.seconds;
+    metadata['ppro.source.end'] = clip.outPoint.seconds;
+    metadata['ppro.source.duration'] = clip.duration.seconds;
+    metadata['ppro.clip.start'] = clip.start.seconds;
+    metadata['ppro.clip.end'] = clip.end.seconds;
 
-    // set output path temorarily
-    var outputPath = "C:\\Users\\hubert\\_PYPE_testing\\projects\\jakub_projectx\\editorial\\e01\\work\\edit\\transcode"
-
-    // send render jobs to encoder
-    $.writeln(clip.name)
-    pype.render(outputPath, instance['name'], metadata['clip.start'], metadata['clip.end']);
-
-    // get linked clips
-    var linkedItems = clip.getLinkedItems();
-    if (linkedItems) {
-      for (var li = 0; li < linkedItems.numItems; li++) {
-        if (linkedItems[li].mediaType === 'Audio') {
-          var audioClip = linkedItems[li];
-          // linked clip is audio
-          // check in and out are same
-          if ((audioClip.inPoint.seconds === clip.inPoint.seconds) &&
-            (audioClip.outPoint.seconds === clip.outPoint.seconds)) {
-            metadata['hasAudio'] = true;
-            // TODO: find out how to get those without dealing with Qe
-            metadata['clip.audio'] = {
-              'audioChanels': 2,
-              'audioRate': 48000
-            };
-            var timelineAudio = [];
-            var audioMetadata = [];
-            audioMetadata['audioChannels'] = 2;
-            audioMetadata['audioRate'] = 48000;
-            audioMetadata['source.start'] = audioClip.start.seconds;
-            audioMetadata['source.end'] = audioClip.end.seconds;
-            audioMetadata['source.duration'] = audioClip.duration.seconds;
-            audioMetadata['clip.start'] = audioClip.inPoint.seconds;
-            audioMetadata['clip.end'] = audioClip.outPoint.seconds;
-            timelineAudio.push(audioMetadata);
-            metadata['timeline.audio'] = timelineAudio;
-          }
-        }
-      }
-    }
     // set metadata to instance
     instance['metadata'] = metadata;
     return instance;
   },
+
   getSelectedClipsAsInstances: function () {
+    // get project script version and add it into clip instance data
+    var version = pype.getWorkFileVersion();
+
+    var pypeData = pype.loadSequenceMetadata(app.project.activeSequence)
+    if (pypeData == null) {
+      alert('First you need to rename clips sequencially with hierarchy!\nUse `Pype Rename` extension', 'No hierarchy data available!', 'error');
+      return;
+    };
+    // instances
+    var instances = [];
+    var selected = pype.getSelectedItems();
+    for (var s = 0; s < selected.length; s++) {
+      var instance = pype.getClipAsInstance(
+        selected[s].clip,
+        selected[s].sequence,
+        selected[s].videoTrack,
+        pypeData
+      );
+      if (instance !== false) {
+        instance.version = version;
+        instances.push(instance);
+      }
+    };
+
+    // adding workfile instance
+    var workFileData = JSON.parse(pype.getWorkfile());
+    var workfileInstance = workFileData;
+    workfileInstance.representations = {
+      workfile: 'ppro'
+    };
+    workfileInstance.name = workFileData.workfile.split('.')[0];
+    workfileInstance.publish = true;
+    workfileInstance.family = 'workfile';
+    workfileInstance.version = version;
+    instances.push(workfileInstance);
+
+    return instances;
+  },
+
+  /**
+   * Return request json data object with instances for pyblish
+   * @param stagingDir {string} - path to temp directory
+   * @return {json string}
+   */
+  getPyblishRequest: function (stagingDir) {
+    var request = {
+      stagingDir: stagingDir
+    };
+    var instances = pype.getSelectedClipsAsInstances();
+    request['instances'] = instances;
+    return JSON.stringify(request);
+  },
+
+  encodeRepresentation: function (request) {
     var sequence = app.project.activeSequence
     // get original timeline in out points
     var defaultTimelinePointValue = -400000
@@ -465,30 +495,110 @@ pype = {
     };
 
     // instances
-    var instances = [];
-    var selected = pype.getSelectedItems();
-    for (var s = 0; s < selected.length; s++) {
-      var instance = pype.getClipAsInstance(
-        selected[s].clip,
-        selected[s].sequence,
-        selected[s].videoTrack
-      );
-      if (instance !== false) {
-        instances.push(instance);
+    var instances = request['instances']
+    // for (inst in instances) {
+    //   $.writeln(inst)
+    // };
+    for (var i = 0; i < instances.length; i++) {
+      // generate data for instance's representations
+      // loop representations of instance and sent job to encoder
+      var representations = instances[i].representations;
+      for (var key in representations) {
+
+        $.writeln(instances[i].name);
+        $.writeln(request.stagingDir);
+        $.writeln(instances[i].version);
+        $.writeln(key);
+
+        $.writeln(representations[key]);
+        $.writeln(JSON.stringify(instances[i].metadata));
+        // send render jobs to encoder
+        var exclude = ['workfile', 'thumbnail'];
+        if (!include(exclude, key)) {
+          pype.render(request.stagingDir, key, representations[key], instances[i].name, instances[i].version, instances[i].metadata['ppro.clip.start'], instances[i].metadata['ppro.clip.end']);
+          $.writeln('job rendered!');
+        };
+
       }
     }
     // set back original in/out point on timeline
     $.writeln(origInPoint, origOutPoint)
     app.project.activeSequence.setInPoint(origInPoint);
     app.project.activeSequence.setOutPoint(origOutPoint);
-    return instances;
   },
 
-  getPyblishRequest: function () {
-    var request = {};
-    var instances = pype.getSelectedClipsAsInstances();
-    request['instances'] = instances;
-    return JSON.stringify(request);
+  render: function (outputPath, family, presetName, clipName, version, inPoint, outPoint) {
+    var outputPresetPath = $.getenv('EXTENSION_PATH').split('/').concat(['encoding', (presetName + '.epr')]).join($._PPP_.getSep());
+
+    $.writeln('\nRendering');
+    $.writeln(outputPresetPath);
+    $.writeln(outputPath);
+    $.writeln(family);
+
+    app.enableQE();
+    var activeSequence = qe.project.getActiveSequence(); // we use a QE DOM function, to determine the output extension.
+    if (activeSequence) {
+      // app.encoder.launchEncoder(); // This can take a while; let's get the ball rolling.
+
+      var projPath = new File(app.project.path);
+
+      if ((outputPath) && projPath.exists) {
+        var outPreset = new File(outputPresetPath);
+        if (outPreset.exists === true) {
+          var outputFormatExtension = activeSequence.getExportFileExtension(outPreset.fsName);
+          if (outputFormatExtension) {
+            app.project.activeSequence.setInPoint(inPoint);
+            app.project.activeSequence.setOutPoint(outPoint);
+            var fullPathToFile = outputPath +
+              $._PPP_.getSep() +
+              clipName + '_' +
+              family +
+              '_v' + version +
+              '.' +
+              outputFormatExtension;
+
+            $.writeln(fullPathToFile);
+            var outFileTest = new File(fullPathToFile);
+
+            if (outFileTest.exists) {
+              var destroyExisting = confirm("A file with that name already exists; overwrite?", false, "Are you sure...?");
+              if (destroyExisting) {
+                outFileTest.remove();
+                outFileTest.close();
+              }
+            }
+
+            // app.encoder.bind('onEncoderJobComplete', $._PPP_.onEncoderJobComplete);
+            // app.encoder.bind('onEncoderJobError', $._PPP_.onEncoderJobError);
+            // app.encoder.bind('onEncoderJobProgress', $._PPP_.onEncoderJobProgress);
+            // app.encoder.bind('onEncoderJobQueued', $._PPP_.onEncoderJobQueued);
+            // app.encoder.bind('onEncoderJobCanceled', $._PPP_.onEncoderJobCanceled);
+            //
+            //
+            // // use these 0 or 1 settings to disable some/all metadata creation.
+            // app.encoder.setSidecarXMPEnabled(0);
+            // app.encoder.setEmbeddedXMPEnabled(0);
+            //
+            //
+            // var jobID = app.encoder.encodeSequence(app.project.activeSequence,
+            //   fullPathToFile,
+            //   outPreset.fsName,
+            //   app.encoder.ENCODE_IN_TO_OUT,
+            //   1); // Remove from queue upon successful completion?
+            //
+            // $._PPP_.updateEventPanel('jobID = ' + jobID);
+            outPreset.close();
+          }
+        } else {
+          $._PPP_.updateEventPanel("Could not find output preset.");
+        }
+      } else {
+        $._PPP_.updateEventPanel("Could not find/create output path.");
+      }
+      projPath.close();
+    } else {
+      $._PPP_.updateEventPanel("No active sequence.");
+    }
   },
 
   log: function (info) {
@@ -502,6 +612,28 @@ pype = {
   alert_message: function (message) {
     alert(message, "WARNING", true);
     app.setSDKEventMessage(message, 'error');
+  },
+  getWorkFileVersion: function () {
+    var outputPath = pype.convertPathString(app.project.path);
+    var outputName = String(app.project.name);
+    var dirPath = outputPath.replace(outputName, '');
+    var pattern = /_v([0-9]*)/g;
+    var search = pattern.exec(outputName);
+    var version = 1;
+    var newFileName, absPath;
+
+    if (search) {
+      return search[1]
+    } else {
+      var create = confirm('The project file name is missing version `_v###` \n example: `NameOfFile_v001.prproj`\n\n Would you like to create version?", true, "ERROR in name syntax');
+      if (create) {
+        var splitName = outputName.split('.');
+        newFileName = splitName[0] + '_v001.' + splitName[1];
+        absPath = dirPath + newFileName;
+        app.project.saveAs(absPath);
+        return '001';
+      }
+    }
   },
   versionUpWorkFile: function () {
     var outputPath = pype.convertPathString(app.project.path);
@@ -549,71 +681,6 @@ pype = {
       srcInPoint,
       srcOutPoint);
 
-  },
-
-  render: function (outputPath, clipName, inPoint, outPoint) {
-    var outputPresetPath = $.getenv('EXTENSION_PATH').split('/').concat(['encoding', 'prores422.epr']).join($._PPP_.getSep());
-    app.enableQE();
-    var activeSequence = qe.project.getActiveSequence(); // we use a QE DOM function, to determine the output extension.
-    if (activeSequence) {
-      app.encoder.launchEncoder(); // This can take a while; let's get the ball rolling.
-
-      var projPath = new File(app.project.path);
-
-      if ((outputPath) && projPath.exists) {
-        var outPreset = new File(outputPresetPath);
-        if (outPreset.exists === true) {
-          var outputFormatExtension = activeSequence.getExportFileExtension(outPreset.fsName);
-          if (outputFormatExtension) {
-            app.project.activeSequence.setInPoint(inPoint);
-            app.project.activeSequence.setOutPoint(outPoint);
-            var fullPathToFile = outputPath +
-              $._PPP_.getSep() +
-              clipName +
-              "." +
-              outputFormatExtension;
-
-            pype.log(fullPathToFile);
-            var outFileTest = new File(fullPathToFile);
-
-            if (outFileTest.exists) {
-              var destroyExisting = confirm("A file with that name already exists; overwrite?", false, "Are you sure...?");
-              if (destroyExisting) {
-                outFileTest.remove();
-                outFileTest.close();
-              }
-            }
-
-            app.encoder.bind('onEncoderJobComplete', $._PPP_.onEncoderJobComplete);
-            app.encoder.bind('onEncoderJobError', $._PPP_.onEncoderJobError);
-            app.encoder.bind('onEncoderJobProgress', $._PPP_.onEncoderJobProgress);
-            app.encoder.bind('onEncoderJobQueued', $._PPP_.onEncoderJobQueued);
-            app.encoder.bind('onEncoderJobCanceled', $._PPP_.onEncoderJobCanceled);
-
-
-            // use these 0 or 1 settings to disable some/all metadata creation.
-            app.encoder.setSidecarXMPEnabled(0);
-            app.encoder.setEmbeddedXMPEnabled(0);
-
-
-            var jobID = app.encoder.encodeSequence(app.project.activeSequence,
-              fullPathToFile,
-              outPreset.fsName,
-              app.encoder.ENCODE_IN_TO_OUT,
-              1); // Remove from queue upon successful completion?
-            $._PPP_.updateEventPanel('jobID = ' + jobID);
-            outPreset.close();
-          }
-        } else {
-          $._PPP_.updateEventPanel("Could not find output preset.");
-        }
-      } else {
-        $._PPP_.updateEventPanel("Could not find/create output path.");
-      }
-      projPath.close();
-    } else {
-      $._PPP_.updateEventPanel("No active sequence.");
-    }
   }
 
 
@@ -627,4 +694,10 @@ Number.prototype.pad = function (size) {
   return s;
 };
 
-pype.getPyblishRequest();
+function include(arr, obj) {
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i] == obj) return true;
+  }
+}
+// var instances = pype.getPyblishRequest();
+// pype.encodeRepresentation(JSON.parse(instances));

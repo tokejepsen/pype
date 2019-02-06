@@ -36,6 +36,24 @@
 
 <div id="section"><a href="javascript:history.go(0)">Refresh panel</a>
   <ul class="list-group list-group-flush dark">
+      <li class="list-group-item" id="publish">
+        <h5>Publish</h5>
+        <pre><code class="js"></code></pre>
+        <div class="input-group input-group-sm mb-3">
+          <div class="input-group-prepend">
+
+              <span class="input-group-text" id="basic-addon6">GUI</span>
+
+          </div>
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <input type="checkbox" name="gui" checked="checked" aria-label="Checkbox for following text input">
+            </div>
+            <button id="btn-publish" type="button" class="btn btn-info btn-sm btn-block">Publish</button>
+          </div>
+
+        </div>
+      </li>
     <li class="list-group-item" id="context">
       <h5>Set context here</h5>
       <div class="input-group input-group-sm mb-3">
@@ -84,25 +102,6 @@
         <input type="text" class="form-control" name="path" placeholder="Path" aria-label="Path" aria-describedby="basic-addon5" value="C:/Users/hubertCODE/pype-setup/repos/pype-config/pype/plugins/premiere/publish">
       </div>
       <button id="btn-register" type="button" class="btn btn-dark btn-sm btn-block">Register path</button>
-    </li>
-
-    <li class="list-group-item" id="publish">
-      <h5>Publish</h5>
-      <pre><code class="js"></code></pre>
-      <div class="input-group input-group-sm mb-3">
-        <div class="input-group-prepend">
-
-            <span class="input-group-text" id="basic-addon6">Path</span>
-
-        </div>
-        <input type="text" class="form-control" name="path" placeholder="JSON" aria-label="JSON" aria-describedby="basic-addon6" value="C:/Users/hubert/CODE/pype-setup/repos/pype-config/pype/premiere/example_publish_reqst.json">
-        <div class="input-group-append">
-          <div class="input-group-text">
-            <input type="checkbox" name="gui" checked="checked" aria-label="Checkbox for following text input"> GUI
-          </div>
-        </div>
-      </div>
-      <button id="btn-publish" type="button" class="btn btn-dark btn-sm btn-block">Publish</button>
     </li>
   </ul>
 

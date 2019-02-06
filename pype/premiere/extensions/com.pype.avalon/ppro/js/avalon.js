@@ -75,11 +75,49 @@ function register() {
   api.register_plugin_path(path).then(displayResult);
 }
 
+function getStagingDir() {
+  // create stagingDir
+  const fs = require('fs-extra');
+  const os = require('os');
+  const path = require('path');
+  const UUID = require('pure-uuid');
+  const id = new UUID(4).format();
+  const stagingDir = path.join(os.tmpdir(), id);
+
+  fs.mkdirs(stagingDir);
+  return stagingDir;
+
+}
+
+function convertPathString(path) {
+  return path.replace(
+    new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), '');
+}
+
 function publish() {
   var $ = querySelector('#publish');
-  var path = $('input[name=path]').value;
   var gui = $('input[name=gui]').checked;
-  api.publish(path, gui).then(displayResult);
+
+  var stagingDir = convertPathString(getStagingDir());
+
+  csi.evalScript('pype.getPyblishRequest("' + stagingDir + '");', function (r) {
+    var request = JSON.parse(r);
+    displayResult(r);
+    csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {});
+
+    // get all clips from sequence pype-data and collect all hierarchy
+    // get all anatomy paths and collect them into clip instances
+    // create all data for representations [png, mp4, mov] version as project
+    // sent jobs to encoder
+    // csi.evalScript('pype.setEnvs(' + JSON.stringify(window.ENV) + ');');
+
+    // create json for pyblish
+    // version up project
+    // csi.evalScript('pype.versionUpWorkFile();');
+
+    // send json to pyblish
+    // api.publish(path, gui).then(displayResult);
+  });
 }
 
 function context() {
