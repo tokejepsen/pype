@@ -2,11 +2,7 @@ import pyblish.api
 import pype.api
 
 
-class ProjectAutoSyncNotOff(Exception):
-    pass
-
-
-class ValidateAutoSyncOff(pyblish.api.Validator):
+class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
     """Ensure that autosync value in ftrack project is set to False.
 
     In case was set to True and event server with the sync to avalon event
@@ -23,11 +19,10 @@ class ValidateAutoSyncOff(pyblish.api.Validator):
     def process(self, instance):
         invalid = self.get_invalid(instance)
 
-        if invalid:
-            raise ProjectAutoSyncNotOff(
+        assert (invalid is not None), (
                 "Ftrack Project has 'Auto sync' set to On."
                 " That may cause issues during integration."
-            )
+        )
 
     @staticmethod
     def get_invalid(instance):
