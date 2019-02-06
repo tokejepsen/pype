@@ -8,7 +8,7 @@ class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.IntegratorOrder + 0.48
+    order = pyblish.api.IntegratorOrder
     label = 'Integrate To Avalon'
     families = []
 
