@@ -34,7 +34,7 @@ pype = {
     app.enableQE();
     var obj = {
       workfile: app.project.name,
-      workdir: pype.convertPathString(app.project.path)
+      workpath: pype.convertPathString(app.project.path)
     };
     return JSON.stringify(obj);
   },
@@ -383,18 +383,6 @@ pype = {
     instance['publish'] = true;
     instance['family'] = 'clip';
     instance['name'] = clip.name;
-    // TODO: tags - wtf and how to get them
-    instance['tags'] = [
-      {
-        task: 'compositing'
-      },
-      {
-        task: 'roto'
-      },
-      {
-        task: '3d'
-      }
-    ];
     instance['hierarchy'] = hierarchy;
     instance['representations'] = {
       reference: 'h264',
@@ -457,7 +445,7 @@ pype = {
     var workFileData = JSON.parse(pype.getWorkfile());
     var workfileInstance = workFileData;
     workfileInstance.representations = {
-      workfile: 'ppro'
+      workfile: 'prproj'
     };
     workfileInstance.name = workFileData.workfile.split('.')[0];
     workfileInstance.publish = true;
@@ -474,14 +462,59 @@ pype = {
    * @return {json string}
    */
   getPyblishRequest: function (stagingDir) {
+    var sequence = app.project.activeSequence;
+    var settings = sequence.getSettings();
     var request = {
-      stagingDir: stagingDir
+      stagingDir: stagingDir,
+      currentFile: pype.convertPathString(app.project.path),
+      framerate: (1 / settings.videoFrameRate.seconds),
+      host: $.getenv('AVALON_APP'),
+      hostVersion: $.getenv('AVALON_APP_NAME').split('_')[1],
+      cwd: pype.convertPathString(app.project.path).split('/').slice(0, -1).join('/')
     };
     var instances = pype.getSelectedClipsAsInstances();
     request['instances'] = instances;
     return JSON.stringify(request);
   },
 
+  convertSecToTimecode: function (timeSec, fps) {
+    var ceiled = Math.round(timeSec * 100) / 100;
+    var parts = ('' + ceiled).split('.');
+    var dec = Number(parts[1]);
+    var main = Number(parts[0]);
+    var sec;
+    var frames = (Number(('' + ((dec * fps) / 100)).split('.')[0])).pad(2);
+    if (main > 59) {
+      sec = (Math.round(((Number(('' + (Math.round((main / 60) * 100) / 100).toFixed(2)).split('.')[1]) / 100) * 60))).pad(2);
+      if (sec === 'NaN') {
+        sec = '00';
+      };
+    } else {
+      sec = main;
+    };
+    var min = (Number(('' + (main / 60)).split('.')[0])).pad(2);
+    var hov = (Number(('' + (main / 3600)).split('.')[0])).pad(2);
+
+    return hov + ":" + min + ":" + sec + ":" + frames;
+  },
+  exportThumbnail: function (name, family, version, outputPath, time, fps) {
+    $.writeln("time is: " + time);
+    app.enableQE();
+    var activeSequence = qe.project.getActiveSequence(); // note: make sure a sequence is active in PPro UI
+    var file = name + '_' +
+      family +
+      '_v' + version +
+      '.png';
+    var fullPathToFile = outputPath +
+      $._PPP_.getSep() +
+      file;
+    $.writeln(fullPathToFile);
+    var expPNG = activeSequence.exportFramePNG(
+      pype.convertSecToTimecode(time, fps),
+      pype.convertPathString(fullPathToFile).split('/').join($._PPP_.getSep())
+    );
+    return file;
+  },
   encodeRepresentation: function (request) {
     var sequence = app.project.activeSequence
     // get original timeline in out points
@@ -503,42 +536,49 @@ pype = {
       // generate data for instance's representations
       // loop representations of instance and sent job to encoder
       var representations = instances[i].representations;
+      instances[i].files = [];
       for (var key in representations) {
 
-        $.writeln(instances[i].name);
-        $.writeln(request.stagingDir);
-        $.writeln(instances[i].version);
-        $.writeln(key);
-
-        $.writeln(representations[key]);
-        $.writeln(JSON.stringify(instances[i].metadata));
         // send render jobs to encoder
         var exclude = ['workfile', 'thumbnail'];
         if (!include(exclude, key)) {
-          pype.render(request.stagingDir, key, representations[key], instances[i].name, instances[i].version, instances[i].metadata['ppro.clip.start'], instances[i].metadata['ppro.clip.end']);
-          $.writeln('job rendered!');
+          instances[i].files.push(pype.render(
+            request.stagingDir,
+            key,
+            representations[key],
+            instances[i].name,
+            instances[i].version,
+            instances[i].metadata['ppro.clip.start'],
+            instances[i].metadata['ppro.clip.end']
+          ));
+        } else if (key === 'thumbnail') {
+          instances[i].files.push(pype.exportThumbnail(
+            instances[i].name,
+            key,
+            instances[i].version,
+            request.stagingDir,
+            instances[i].metadata['ppro.clip.start'],
+            instances[i].metadata['ppro.timeline.fps']
+          ));
+        } else if (key === 'workfile') {
+          instances[i].files.push(instances[i].workfile);
         };
 
       }
     }
     // set back original in/out point on timeline
-    $.writeln(origInPoint, origOutPoint)
     app.project.activeSequence.setInPoint(origInPoint);
     app.project.activeSequence.setOutPoint(origOutPoint);
+    return JSON.stringify(request);
   },
 
   render: function (outputPath, family, presetName, clipName, version, inPoint, outPoint) {
     var outputPresetPath = $.getenv('EXTENSION_PATH').split('/').concat(['encoding', (presetName + '.epr')]).join($._PPP_.getSep());
 
-    $.writeln('\nRendering');
-    $.writeln(outputPresetPath);
-    $.writeln(outputPath);
-    $.writeln(family);
-
     app.enableQE();
     var activeSequence = qe.project.getActiveSequence(); // we use a QE DOM function, to determine the output extension.
     if (activeSequence) {
-      // app.encoder.launchEncoder(); // This can take a while; let's get the ball rolling.
+      app.encoder.launchEncoder(); // This can take a while; let's get the ball rolling.
 
       var projPath = new File(app.project.path);
 
@@ -549,15 +589,15 @@ pype = {
           if (outputFormatExtension) {
             app.project.activeSequence.setInPoint(inPoint);
             app.project.activeSequence.setOutPoint(outPoint);
-            var fullPathToFile = outputPath +
-              $._PPP_.getSep() +
-              clipName + '_' +
+            var file = clipName + '_' +
               family +
               '_v' + version +
               '.' +
               outputFormatExtension;
+            var fullPathToFile = outputPath +
+              $._PPP_.getSep() +
+              file;
 
-            $.writeln(fullPathToFile);
             var outFileTest = new File(fullPathToFile);
 
             if (outFileTest.exists) {
@@ -568,26 +608,27 @@ pype = {
               }
             }
 
-            // app.encoder.bind('onEncoderJobComplete', $._PPP_.onEncoderJobComplete);
-            // app.encoder.bind('onEncoderJobError', $._PPP_.onEncoderJobError);
-            // app.encoder.bind('onEncoderJobProgress', $._PPP_.onEncoderJobProgress);
-            // app.encoder.bind('onEncoderJobQueued', $._PPP_.onEncoderJobQueued);
-            // app.encoder.bind('onEncoderJobCanceled', $._PPP_.onEncoderJobCanceled);
-            //
-            //
-            // // use these 0 or 1 settings to disable some/all metadata creation.
-            // app.encoder.setSidecarXMPEnabled(0);
-            // app.encoder.setEmbeddedXMPEnabled(0);
-            //
-            //
-            // var jobID = app.encoder.encodeSequence(app.project.activeSequence,
-            //   fullPathToFile,
-            //   outPreset.fsName,
-            //   app.encoder.ENCODE_IN_TO_OUT,
-            //   1); // Remove from queue upon successful completion?
-            //
-            // $._PPP_.updateEventPanel('jobID = ' + jobID);
+            app.encoder.bind('onEncoderJobComplete', $._PPP_.onEncoderJobComplete);
+            app.encoder.bind('onEncoderJobError', $._PPP_.onEncoderJobError);
+            app.encoder.bind('onEncoderJobProgress', $._PPP_.onEncoderJobProgress);
+            app.encoder.bind('onEncoderJobQueued', $._PPP_.onEncoderJobQueued);
+            app.encoder.bind('onEncoderJobCanceled', $._PPP_.onEncoderJobCanceled);
+
+
+            // use these 0 or 1 settings to disable some/all metadata creation.
+            app.encoder.setSidecarXMPEnabled(0);
+            app.encoder.setEmbeddedXMPEnabled(0);
+
+
+            var jobID = app.encoder.encodeSequence(app.project.activeSequence,
+              fullPathToFile,
+              outPreset.fsName,
+              app.encoder.ENCODE_IN_TO_OUT,
+              1); // Remove from queue upon successful completion?
+
+            $._PPP_.updateEventPanel('jobID = ' + jobID);
             outPreset.close();
+            return file;
           }
         } else {
           $._PPP_.updateEventPanel("Could not find output preset.");
@@ -632,6 +673,22 @@ pype = {
         absPath = dirPath + newFileName;
         app.project.saveAs(absPath);
         return '001';
+      }
+    }
+  },
+  saveProjectCopy: function (outputPath) {
+    var originalPath = pype.convertPathString(app.project.path);
+    var outputName = String(app.project.name);
+
+    var fullOutPath = outputPath + $._PPP_.getSep() + outputName;
+
+    app.project.saveAs(fullOutPath);
+
+    for (var a = 0; a < app.projects.numProjects; a++) {
+      var currentProject = app.projects[a];
+      if (currentProject.path === fullOutPath) {
+        app.openDocument(originalPath); // Why first? So we don't frighten the user by making PPro's window disappear. :)
+        currentProject.closeDocument();
       }
     }
   },

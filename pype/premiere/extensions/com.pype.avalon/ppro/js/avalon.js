@@ -98,25 +98,37 @@ function publish() {
   var $ = querySelector('#publish');
   var gui = $('input[name=gui]').checked;
 
+  // create temp staging directory on local
   var stagingDir = convertPathString(getStagingDir());
 
+  // copy project file to stagingDir
+  const fs = require('fs-extra');
+  const path = require('path');
+  csi.evalScript('pype.getWorkfile();', function (result) {
+    var data = JSON.parse(result);
+    var destination = convertPathString(path.join(stagingDir, data.workfile));
+    displayResult('copy project file');
+    displayResult(data.workpath);
+    displayResult(destination);
+    fs.copyFile(data.workpath, destination);
+  });
+
+  // publishing file
   csi.evalScript('pype.getPyblishRequest("' + stagingDir + '");', function (r) {
     var request = JSON.parse(r);
     displayResult(r);
-    csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {});
+    csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {
+      // create json for pyblish
+      var jsonfile = require('jsonfile');
+      var jsonRequestFile = stagingDir + '.json'
+      jsonfile.writeFile(jsonRequestFile, JSON.parse(result));
 
-    // get all clips from sequence pype-data and collect all hierarchy
-    // get all anatomy paths and collect them into clip instances
-    // create all data for representations [png, mp4, mov] version as project
-    // sent jobs to encoder
-    // csi.evalScript('pype.setEnvs(' + JSON.stringify(window.ENV) + ');');
+      // version up project
+      csi.evalScript('pype.versionUpWorkFile();');
 
-    // create json for pyblish
-    // version up project
-    // csi.evalScript('pype.versionUpWorkFile();');
-
-    // send json to pyblish
-    // api.publish(path, gui).then(displayResult);
+      // send json to pyblish
+      api.publish(jsonRequestFile, gui).then(displayResult);
+    });
   });
 }
 

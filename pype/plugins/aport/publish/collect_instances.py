@@ -32,6 +32,9 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
         instances_data = json_data.get("instances", None)
         assert instances_data, "No `instance` data in json file"
 
+        staging_dir = json_data.get("stagingDir", None)
+        assert staging_dir, "No `stagingDir` path in json file"
+
         presets = context.data["presets"]
         rules_tasks = presets["rules_tasks"]
 
@@ -84,10 +87,17 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
         # Set label
         label = "{0} - {1} > {2}".format(name, task, families)
 
+        # get workfile instance Data
+        workfile_instance = [inst for inst in instances_data
+                             if inst.get("family", None) in 'workfile']
+        self.log.debug('workfile_instance: {}'.format(workfile_instance))
         # get working file into instance for publishing
         instance = context.create_instance(subset_name)
+        if workfile_instance:
+            instance.data.update(workfile_instance[0])
         instance.data.update({
             "subset": subset_name,
+            "stagingDir": staging_dir,
             "task": task,
             "representation": ext[1:],
             "host": host,
@@ -108,7 +118,11 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
             assert name, "No `name` key in json_data.instance: {}".format(inst)
 
             family = inst.get("family", None)
-            assert family, "No `family` key in json_data.instance: {}".format(inst)
+            assert family, "No `family` key in json_data.instance: {}".format(
+                inst)
+
+            if family in 'workfile':
+                continue
 
             tags = inst.get("tags", None)
             if tags:
@@ -128,6 +142,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                     # instance.add(inst)
                     instance.data.update({
                         "subset": subset_name,
+                        "stagingDir": staging_dir,
                         "task": task,
                         "fstart": frame_start,
                         "handles": handles,
@@ -142,7 +157,8 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         # "hierarchy": ,
                         "publish": True,
                     })
-                    self.log.info("collected instance: {}".format(instance.data))
+                    self.log.info(
+                        "collected instance: {}".format(instance.data))
                     instances.append(instance)
 
         context.data["instances"] = instances
