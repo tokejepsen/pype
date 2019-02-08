@@ -2,7 +2,7 @@ import pyblish.api
 from avalon import io
 
 
-class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
+class IntegrateInstancesToAvalon(pyblish.api.ContextPlugin):
     """
     Create entities in ftrack based on collected data from premiere
 
@@ -14,18 +14,15 @@ class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
 
     exclude = []
 
-    def process(self, instance):
-        for ex in self.exclude:
-            if ex in instance.data['families']:
-                return
-
-        self.log.debug('instance {}'.format(instance))
+    def process(self, context):
+        if "hierarchy_context" not in context.data:
+            return
 
         self.db = io
         self.db.install()
-        # TODO implement how to get right data
-        all_instances_data = {}
-        self.import_to_avalon(all_instances_data)
+
+        input_data = context.data["hierarchy_context"]
+        self.import_to_avalon(input_data)
 
     def import_to_avalon(self, input_data, parent=None):
         for name in input_data:
@@ -35,14 +32,9 @@ class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
             data = {}
             # Process project
             if entity_type.lower() == 'project':
-                # TODO: this should be already set if io...?
-                if self.db.Session['AVALON_PROJECT'] is None:
-                    self.db.Session['AVALON_PROJECT'] = name
-
                 entity = self.db.find_one({'type': 'project'})
-                if entity is None:
-                    # TODO: better exception
-                    raise Exception
+                # TODO: should be in validator?
+                assert (entity is not None), "Didn't find project in DB"
 
                 # get data from already existing project
                 for key, value in entity.get('data', {}).items():
@@ -51,8 +43,9 @@ class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
                 self.av_project = entity
             # Raise error if project or parent are not set
             elif self.av_project is None or parent is None:
-                # TODO better exception
-                raise Exception
+                raise AssertionError(
+                    "Collected items are not in right order!"
+                )
             # Else process assset
             else:
                 entity = self.db.find_one({'type': 'asset', 'name': name})
@@ -73,7 +66,8 @@ class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
                 data['entityType'] = entity_type
                 # TASKS
                 tasks = entity_data.get('tasks', [])
-                data['tasks'] = tasks
+                if tasks is not None or len(tasks) > 0:
+                    data['tasks'] = tasks
                 parents = []
                 visualParent = None
                 # do not store project's id as visualParent (silo asset)
@@ -85,8 +79,8 @@ class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
                 data['parents'] = parents
 
             # CUSTOM ATTRIBUTES
-            for key, value in entity_data.get('custom_attributes', {}).items():
-                data[key] = value
+            for k, val in entity_data.get('custom_attributes', {}).items():
+                data[k] = val
 
             # Update entity data with input data
             self.db.update_many(

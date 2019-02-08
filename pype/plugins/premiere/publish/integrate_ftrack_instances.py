@@ -1,10 +1,28 @@
 import pyblish.api
 
 
-class IntegrateInstancesToFtrack(pyblish.api.InstancePlugin):
+class IntegrateInstancesToFtrack(pyblish.api.ContextPlugin):
     """
     Create entities in ftrack based on collected data from premiere
-
+    Example of entry data:
+    {
+        "ProjectXS": {
+            "entity_type": "Project",
+            "custom_attributes": {
+                "fps": 24,...
+            },
+            "tasks": [
+                "Compositing",
+                "Lighting",... *task must exist as task type in project schema*
+            ],
+            "childs": {
+                "sq01": {
+                    "entity_type": "Sequence",
+                    ...
+                }
+            }
+        }
+    }
     """
 
     order = pyblish.api.IntegratorOrder
@@ -13,19 +31,15 @@ class IntegrateInstancesToFtrack(pyblish.api.InstancePlugin):
 
     exclude = []
 
-    def process(self, instance):
-        for ex in self.exclude:
-            if ex in instance.data['families']:
-                return
-
-        self.log.debug('instance {}'.format(instance))
+    def process(self, context):
+        if "hierarchy_context" not in context.data:
+            return
 
         self.ft_project = None
-        self.session = instance.context.data["ftrackSession"]
+        self.session = context.data["ftrackSession"]
 
-        # TODO implement how to get right data
-        all_instances_data = {}
-        self.import_to_ftrack(all_instances_data)
+        input_data = context.data["hierarchy_context"]
+        self.import_to_ftrack(input_data)
 
     def import_to_ftrack(self, input_data, parent=None):
         for entity_name in input_data:
@@ -38,12 +52,12 @@ class IntegrateInstancesToFtrack(pyblish.api.InstancePlugin):
                 self.ft_project = entity
                 self.task_types = self.get_all_task_types(entity)
 
-            elif self.ft_project is None:
-                # TODO better exception
-                raise Exception
-            elif parent is None:
-                # TODO better exception
-                raise Exception
+            elif self.ft_project is None or parent is None:
+                raise AssertionError(
+                    "Collected items are not in right order!"
+                )
+
+            # try to find if entity already exists
             else:
                 query = '{} where name is "{}" and parent_id is "{}"'.format(
                     entity_type, entity_name, parent['id']
@@ -63,9 +77,9 @@ class IntegrateInstancesToFtrack(pyblish.api.InstancePlugin):
             # CUSTOM ATTRIBUTES
             custom_attributes = entity_data.get('custom_attributes', [])
             for key in custom_attributes:
-                if key not in entity['custom_attributes']:
-                    # TODO better exception
-                    raise Exception
+                assert (key in entity['custom_attributes']), (
+                    'Missing custom attribute')
+
                 entity['custom_attributes'][key] = custom_attributes[key]
                 self.session.commit()
 
