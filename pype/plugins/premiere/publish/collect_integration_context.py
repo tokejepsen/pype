@@ -19,11 +19,9 @@ class CollectContextForIntegration(pyblish.api.ContextPlugin):
     def process(self, context):
         data_path = context.data['rqst_json_data_path']
         self.log.info("Context is: {}".format(data_path))
-        # TODO: 100% sure way of get project! Will be Name or Code?
-        project_name = api.Session["AVALON_PROJECT"]
+
         temp_context = {}
-        # TODO: how to get instances? --> Context??? Load JSON???
-        for instance in instances:
+        for instance in context.data["instances"]:
             in_info = {}
             name = instance['name']
             # suppose that all instances are Shots
@@ -31,19 +29,25 @@ class CollectContextForIntegration(pyblish.api.ContextPlugin):
             # TODO: get custom attributes
             in_info['custom_attributes'] = {}
             # TODO: get tasks
-            in_info['tasks'] = {}
+            in_info['tasks'] = []
             parents = instance.get('hierarchy', [])
             actual = {name: in_info}
             for parent in reversed(parents):
                 next_dict = {}
                 parent_name = parent["entityName"]
                 next_dict[parent_name] = {}
-                next_dict[parent_name]["entityType"] = parent["entityType"]
+                next_dict[parent_name]["entity_type"] = parent["entityType"]
                 next_dict[parent_name]["childs"] = actual
                 actual = next_dict
 
             temp_context = self.update_dict(temp_context, actual)
 
+        # TODO: 100% sure way of get project! Will be Name or Code?
+        project_name = api.Session["AVALON_PROJECT"]
         final_context = {}
         final_context[project_name] = {}
+        final_context[project_name]['entity_type'] = 'Project'
         final_context[project_name]['childs'] = temp_context
+        # TODO: project's custom attributes/tasks?
+
+        context.data["hierarchical_context"] = final_context
