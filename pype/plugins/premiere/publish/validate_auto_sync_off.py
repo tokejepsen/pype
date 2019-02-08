@@ -1,5 +1,6 @@
 import pyblish.api
 import pype.api
+import avalon.api
 
 
 class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
@@ -27,7 +28,7 @@ class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
     @staticmethod
     def get_invalid(instance):
         session = instance.context.data["ftrackSession"]
-        # project_name =
+        project_name = avalon.api.Session["AVALON_PROJECT"]
         query = 'Project where full_name is "{}"'.format(project_name)
         project = session.query(query).one()
 
