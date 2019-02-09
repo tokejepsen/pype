@@ -30,11 +30,11 @@ pype = {
       new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), '');
   },
 
-  getWorkfile: function () {
+  getProjectFileData: function () {
     app.enableQE();
     var obj = {
-      workfile: app.project.name,
-      workpath: pype.convertPathString(app.project.path)
+      projectfile: app.project.name,
+      projectdir: pype.convertPathString(app.project.path).split('/').slice(0, -1).join('/')
     };
     return JSON.stringify(obj);
   },
@@ -373,28 +373,43 @@ pype = {
       return false;
     }
     var pdClips = pypeData.clips;
+    var hierarchy;
+    var parents;
     for (var c = 0; c < pdClips.length; c++) {
       if (pdClips[c].name === clip.name) {
-        var hierarchy = pdClips[c].hierarchy;
+        parents = pdClips[c].parents;
+        hierarchy = pdClips[c].hierarchy;
       }
     }
+    if (hierarchy === null) {
+      alert('First you need to rename clip sequencially with hierarchy!\nUse `Pype Rename` extension', 'No hierarchy data available at clip ' + clip.name + '!', 'error');
+      return;
+    };
+
     var interpretation = clip.projectItem.getFootageInterpretation();
     var instance = {};
     instance['publish'] = true;
     instance['family'] = 'clip';
     instance['name'] = clip.name;
     instance['hierarchy'] = hierarchy;
+    instance['parents'] = parents;
     instance['representations'] = {
-      reference: 'h264',
-      thumbnail: 'png',
-      plates: 'prores422'
+      reference: {
+        preset: 'h264',
+        representation: 'mp4'
+      },
+      thumbnail: {
+        representation: 'png'
+      },
+      plates: {
+        preset: 'prores422',
+        representation: 'mov'
+      }
     };
     // metadata
     var metadata = {};
     // TODO: how to get colorspace clip info
     metadata['colorspace'] = 'bt.709';
-    // frameRate in Premiere is fraction of second, to get "normal fps",
-    // we need 1/x
     var settings = sequence.getSettings();
     var sequenceSize = pype.getImageSize();
     metadata['ppro.videoTrack.name'] = videoTrack.name;
@@ -441,17 +456,19 @@ pype = {
       }
     };
 
-    // adding workfile instance
-    var workFileData = JSON.parse(pype.getWorkfile());
-    var workfileInstance = workFileData;
-    workfileInstance.representations = {
-      workfile: 'prproj'
+    // adding project file instance
+    var projectFileData = JSON.parse(pype.getProjectFileData());
+    var projectFileInstance = projectFileData;
+    projectFileInstance.representations = {
+      projectfile: {
+        representation: 'prproj'
+      }
     };
-    workfileInstance.name = workFileData.workfile.split('.')[0];
-    workfileInstance.publish = true;
-    workfileInstance.family = 'workfile';
-    workfileInstance.version = version;
-    instances.push(workfileInstance);
+    projectFileInstance.name = projectFileData.projectfile.split('.')[0];
+    projectFileInstance.publish = true;
+    projectFileInstance.family = 'projectfile';
+    projectFileInstance.version = version;
+    instances.push(projectFileInstance);
 
     return instances;
   },
@@ -540,7 +557,7 @@ pype = {
       for (var key in representations) {
 
         // send render jobs to encoder
-        var exclude = ['workfile', 'thumbnail'];
+        var exclude = ['projectfile', 'thumbnail'];
         if (!include(exclude, key)) {
           instances[i].files.push(pype.render(
             request.stagingDir,
@@ -560,8 +577,8 @@ pype = {
             instances[i].metadata['ppro.clip.start'],
             instances[i].metadata['ppro.timeline.fps']
           ));
-        } else if (key === 'workfile') {
-          instances[i].files.push(instances[i].workfile);
+        } else if (key === 'projectfile') {
+          instances[i].files.push(instances[i].projectfile);
         };
 
       }
@@ -572,8 +589,8 @@ pype = {
     return JSON.stringify(request);
   },
 
-  render: function (outputPath, family, presetName, clipName, version, inPoint, outPoint) {
-    var outputPresetPath = $.getenv('EXTENSION_PATH').split('/').concat(['encoding', (presetName + '.epr')]).join($._PPP_.getSep());
+  render: function (outputPath, family, representation, clipName, version, inPoint, outPoint) {
+    var outputPresetPath = $.getenv('EXTENSION_PATH').split('/').concat(['encoding', (representation.preset + '.epr')]).join($._PPP_.getSep());
 
     app.enableQE();
     var activeSequence = qe.project.getActiveSequence(); // we use a QE DOM function, to determine the output extension.
@@ -756,5 +773,5 @@ function include(arr, obj) {
     if (arr[i] == obj) return true;
   }
 }
-// var instances = pype.getPyblishRequest();
-// pype.encodeRepresentation(JSON.parse(instances));
+var instances = pype.getPyblishRequest();
+pype.encodeRepresentation(JSON.parse(instances));

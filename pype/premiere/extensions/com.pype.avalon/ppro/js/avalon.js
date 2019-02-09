@@ -8,7 +8,7 @@ var process = cep_node.require('process');
 
 
 function getEnv() {
-  csi.evalScript('pype.getWorkfile();', function (result) {
+  csi.evalScript('pype.getProjectFileData();', function (result) {
     process.env.EXTENSION_PATH = rootFolderPath
     window.ENV = process.env;
     var resultData = JSON.parse(result);
@@ -104,7 +104,7 @@ function publish() {
   // copy project file to stagingDir
   const fs = require('fs-extra');
   const path = require('path');
-  csi.evalScript('pype.getWorkfile();', function (result) {
+  csi.evalScript('pype.getProjectFileData();', function (result) {
     var data = JSON.parse(result);
     var destination = convertPathString(path.join(stagingDir, data.workfile));
     displayResult('copy project file');

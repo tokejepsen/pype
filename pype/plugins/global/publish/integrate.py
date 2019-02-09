@@ -38,8 +38,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "nukescript",
                 "review",
                 "scene",
-                "ass"]
-    exclude_families = ["clip"]
+                "ass",
+                # "clip",
+                "projectfile"]
+    exclude_families = [
+        # "clip"
+    ]
 
     def process(self, instance):
         if [ef for ef in self.exclude_families
@@ -141,7 +145,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         #     \|________|
         #
         root = api.registered_root()
-        hierarchy = io.find_one({"type": 'asset', "name": ASSET})['data']['parents']
+        hierarchy = io.find_one({"type": 'asset', "name": ASSET})[
+            'data']['parents']
         if hierarchy:
             # hierarchy = os.path.sep.join(hierarchy)
             hierarchy = os.path.join(*hierarchy)

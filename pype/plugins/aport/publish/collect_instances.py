@@ -81,20 +81,20 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
 
         # get current file host
         host = a_session["AVALON_APP"]
-        family = "workfile"
+        family = "projectfile"
         families = "filesave"
         subset_name = "{0}_{1}".format(task, family)
         # Set label
         label = "{0} - {1} > {2}".format(name, task, families)
 
-        # get workfile instance Data
-        workfile_instance = [inst for inst in instances_data
-                             if inst.get("family", None) in 'workfile']
-        self.log.debug('workfile_instance: {}'.format(workfile_instance))
+        # get project file instance Data
+        pf_instance = [inst for inst in instances_data
+                       if inst.get("family", None) in 'projectfile']
+        self.log.debug('pf_instance: {}'.format(pf_instance))
         # get working file into instance for publishing
         instance = context.create_instance(subset_name)
-        if workfile_instance:
-            instance.data.update(workfile_instance[0])
+        if pf_instance:
+            instance.data.update(pf_instance[0])
         instance.data.update({
             "subset": subset_name,
             "stagingDir": staging_dir,
@@ -104,9 +104,12 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
             "asset": asset_name,
             "label": label,
             "name": name,
+            # "hierarchy": hierarchy,
+            # "parents": parents,
             "family": family,
             "families": [families],
             "publish": True,
+            # "files": files_list
         })
         instances.append(instance)
 
@@ -121,8 +124,17 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
             assert family, "No `family` key in json_data.instance: {}".format(
                 inst)
 
-            if family in 'workfile':
+            if family in 'projectfile':
                 continue
+
+            files_list = inst.get("files", None)
+            assert files_list, "`files` are empty in json file"
+
+            hierarchy = inst.get("hierarchy", None)
+            assert hierarchy, "No `hierarchy` data in json file"
+
+            parents = inst.get("parents", None)
+            assert parents, "No `parents` data in json file"
 
             tags = inst.get("tags", None)
             if tags:
@@ -148,6 +160,9 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         "handles": handles,
                         "host": host,
                         "asset": asset,
+                        "hierarchy": hierarchy,
+                        "parents": parents,
+                        "files": files_list,
                         "label": "{0} - {1} > {2}".format(name, task, subset),
                         "name": subset_name,
                         "family": inst["family"],
