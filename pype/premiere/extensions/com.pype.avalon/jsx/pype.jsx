@@ -404,6 +404,10 @@ pype = {
       plates: {
         preset: 'prores422',
         representation: 'mov'
+      },
+      sound: {
+        preset: '44khz',
+        representation: 'wav'
       }
     };
     // metadata
