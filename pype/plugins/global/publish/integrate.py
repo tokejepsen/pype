@@ -40,7 +40,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "scene",
                 "ass",
                 # "clip",
-                "projectfile"]
+                "projectfile",
+                "clip"]
     exclude_families = [
         # "clip"
     ]
@@ -122,6 +123,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                                  "next version in database "
                                  "('v{1:03d}')".format(assumed_version,
                                                        next_version))
+
+        # get version number from instance data and use it if version higher
+        instance_version = instance.data.get('version', None)
+        if instance_version:
+            instance_version = int(instance_version)
+            if instance_version >= next_version:
+                next_version = instance_version
 
         self.log.debug("Next version: v{0:03d}".format(next_version))
 

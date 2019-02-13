@@ -14,8 +14,7 @@ if (ExternalObject.AdobeXMPScript === undefined) {
 pype = {
   setEnvs: function (env) {
     for (key in env) {
-      // $.writeln(key);
-      // $.writeln(env[key])
+      $.writeln((key + ': ' + env[key]));
       $.setenv(key, env[key])
     };
   },

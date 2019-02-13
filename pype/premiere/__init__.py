@@ -9,6 +9,7 @@ from app import api as app
 from pprint import pprint
 from .. import api
 
+
 import requests
 
 
@@ -78,9 +79,11 @@ def install():
 
     api.set_avalon_workdir()
     log.info("Registering Premiera plug-ins..")
-
     reg_paths = request_aport("/api/register_plugin_path",
                               {"publish_path": PUBLISH_PATH})
+
+    # adding publish plugin path to environment
+    os.environ['PPRO_PUBLISH_PATH'] = reg_paths
 
     log.info(str(reg_paths))
 

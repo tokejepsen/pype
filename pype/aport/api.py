@@ -124,7 +124,7 @@ def deregister_plugin_path():
 
 @pico.expose()
 def register_plugin_path(publish_path):
-    deregister_plugin_path()
+    # deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
             os.environ["PUBLISH_PATH"].split(os.pathsep) +

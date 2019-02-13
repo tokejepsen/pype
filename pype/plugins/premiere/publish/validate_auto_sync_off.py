@@ -3,7 +3,7 @@ import pype.api
 import avalon.api
 
 
-class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
+class ValidateAutoSyncOff(pyblish.api.InstancePlugin):
     """Ensure that autosync value in ftrack project is set to False.
 
     In case was set to True and event server with the sync to avalon event
@@ -11,9 +11,8 @@ class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
 
     """
 
-    order = pype.api.ValidatorOrder
-    hosts = ["premiere"]
-    families = []
+    order = pyblish.api.ValidatorOrder
+    families = ['clip']
     label = 'Ftrack project\'s auto sync off'
     actions = [pype.api.RepairAction]
 
@@ -21,8 +20,8 @@ class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
         invalid = self.get_invalid(instance)
 
         assert (invalid is not None), (
-                "Ftrack Project has 'Auto sync' set to On."
-                " That may cause issues during integration."
+            "Ftrack Project has 'Auto sync' set to On."
+            " That may cause issues during integration."
         )
 
     @staticmethod

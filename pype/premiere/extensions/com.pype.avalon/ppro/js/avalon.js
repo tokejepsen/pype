@@ -104,13 +104,17 @@ function publish() {
   // copy project file to stagingDir
   const fs = require('fs-extra');
   const path = require('path');
+
   csi.evalScript('pype.getProjectFileData();', function (result) {
     var data = JSON.parse(result);
-    var destination = convertPathString(path.join(stagingDir, data.workfile));
+    displayResult(stagingDir);
+    displayResult(data.projectfile);
+    var destination = convertPathString(path.join(stagingDir, data.projectfile));
     displayResult('copy project file');
-    displayResult(data.workpath);
+    displayResult(data.projectfile);
     displayResult(destination);
-    fs.copyFile(data.workpath, destination);
+    fs.copyFile(data.projectfile, destination);
+    displayResult('project file coppied!');
   });
 
   // publishing file

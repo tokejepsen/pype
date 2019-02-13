@@ -28,8 +28,7 @@ class IntegrateInstancesToFtrack(pyblish.api.ContextPlugin):
     order = pyblish.api.IntegratorOrder
     label = 'Integrate To Ftrack'
     families = ["ftrack"]
-
-    exclude = []
+    optional = True
 
     def process(self, context):
         if "hierarchy_context" not in context.data:

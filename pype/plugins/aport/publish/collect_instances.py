@@ -25,6 +25,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.48
 
     def process(self, context):
+
         a_session = context.data.get("avalonSession")
         json_data = context.data.get("json_data", None)
         assert json_data, "No `json_data` data in json file"
@@ -117,6 +118,9 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
             # for key, value in inst.items():
             #     self.log.debug('instance[key]: {}'.format(key))
             #
+            version = inst.get("version", None)
+            assert version, "No `version` string in json file"
+
             name = asset = inst.get("name", None)
             assert name, "No `name` key in json_data.instance: {}".format(inst)
 
@@ -149,9 +153,17 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                 subsets = rules_tasks["taskSubsets"][task]
 
                 for subset in subsets:
+                    if inst["representations"].get(subset, None):
+                        repr = inst["representations"][subset]
+                        ext = repr['representation']
+                    else:
+                        continue
+
                     subset_name = "{0}_{1}".format(task, subset)
                     instance = context.create_instance(subset_name)
-                    # instance.add(inst)
+                    files = [f for f in files_list
+                             if subset in f]
+
                     instance.data.update({
                         "subset": subset_name,
                         "stagingDir": staging_dir,
@@ -162,7 +174,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         "asset": asset,
                         "hierarchy": hierarchy,
                         "parents": parents,
-                        "files": files_list,
+                        "files": files,
                         "label": "{0} - {1} > {2}".format(name, task, subset),
                         "name": subset_name,
                         "family": inst["family"],
@@ -171,7 +183,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         # "parents": , # bez tasku
                         # "hierarchy": ,
                         "publish": True,
-                    })
+                        "version": version})
                     self.log.info(
                         "collected instance: {}".format(instance.data))
                     instances.append(instance)
