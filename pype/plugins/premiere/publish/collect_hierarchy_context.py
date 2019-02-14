@@ -6,7 +6,9 @@ class CollectHierarchyContext(pyblish.api.ContextPlugin):
     """Collecting hierarchy context from `parents` and `hierarchy` data
     present in `clip` family instances coming from the request json data file
 
-    It will add `hierarchical_context` into each instance for integrate plugins to be able to create needed parents for the context if they don't exist yet
+    It will add `hierarchical_context` into each instance for integrate
+    plugins to be able to create needed parents for the context if they
+    don't exist yet
     """
 
     label = "Collect Hierarchy Context"

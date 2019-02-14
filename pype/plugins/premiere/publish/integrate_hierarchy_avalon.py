@@ -2,14 +2,14 @@ import pyblish.api
 from avalon import io
 
 
-class IntegrateInstancesToAvalon(pyblish.api.InstancePlugin):
+class IntegrateHierarchyToAvalon(pyblish.api.InstancePlugin):
     """
     Create entities in ftrack based on collected data from premiere
 
     """
 
     order = pyblish.api.IntegratorOrder - 0.1
-    label = 'Integrate To Avalon'
+    label = 'Integrate Hierarchy To Avalon'
     families = ['clip']
 
     def process(self, instance):
