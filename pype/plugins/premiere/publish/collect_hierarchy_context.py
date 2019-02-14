@@ -2,7 +2,7 @@ import pyblish.api
 from avalon import api
 
 
-class CollectContextForIntegration(pyblish.api.ContextPlugin):
+class CollectHierarchyContext(pyblish.api.ContextPlugin):
     """Collecting hierarchy context from `parents` and `hierarchy` data
     present in `clip` family instances coming from the request json data file
 
@@ -21,8 +21,6 @@ class CollectContextForIntegration(pyblish.api.ContextPlugin):
         return new_dict
 
     def process(self, context):
-        data_path = context.data['rqst_json_data_path']
-        self.log.info("Context is: {}".format(data_path))
 
         temp_context = {}
         for instance in context.data["instances"]:
@@ -56,5 +54,5 @@ class CollectContextForIntegration(pyblish.api.ContextPlugin):
             final_context[project_name]['childs'] = temp_context
 
             # adding hierarchy context to instance
-            instance.data["hierarchy_context"] = final_context
+            instance.data["hierarchyContext"] = final_context
             self.log.debug("instance.data is: {}".format(instance.data))
