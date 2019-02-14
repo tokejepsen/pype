@@ -27,7 +27,7 @@ class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
 
     order = pyblish.api.IntegratorOrder
     label = 'Integrate Hierarchy To Ftrack'
-    families = ["ftrack"]
+    families = ["clip"]
     optional = False
 
     def process(self, instance):

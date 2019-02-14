@@ -43,7 +43,6 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
         return query
 
     def process(self, instance):
-
         session = instance.context.data["ftrackSession"]
         task = instance.context.data["ftrackTask"]
 
