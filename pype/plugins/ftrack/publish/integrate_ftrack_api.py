@@ -26,8 +26,8 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
             str: String query to use with "session.query"
         """
         queries = []
-        for key, value in data.iteritems():
-            if not isinstance(value, (basestring, int)):
+        for key, value in data.items():
+            if not isinstance(value, (str, int)):
                 self.log.info(value)
                 if "id" in value.keys():
                     queries.append(

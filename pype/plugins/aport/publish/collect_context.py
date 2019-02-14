@@ -68,7 +68,8 @@ class CollectContextDataFromAport(pyblish.api.ContextPlugin):
 
         # get presets for host
         presets_dir = os.path.join(templates_dir, "presets", host)
-        assert os.path.exists(presets_dir), "Required path `{}` doesn't exist".format(presets_dir)
+        assert os.path.exists(
+            presets_dir), "Required path `{}` doesn't exist".format(presets_dir)
 
         # load all available preset json files
         preset_data = dict()

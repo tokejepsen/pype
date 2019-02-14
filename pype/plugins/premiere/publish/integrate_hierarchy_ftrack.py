@@ -1,7 +1,7 @@
 import pyblish.api
 
 
-class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
+class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
     """
     Create entities in ftrack based on collected data from premiere
     Example of entry data:
@@ -29,21 +29,22 @@ class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
     label = 'Integrate Hierarchy To Ftrack'
     families = ["clip"]
     optional = False
+    task_maping = {'blocking': 'Layout'}
 
-    def process(self, instance):
-        if "hierarchyContext" not in instance.data:
+    def process(self, context):
+        if "hierarchyContext" not in context.data:
             return
 
         self.ft_project = None
-        self.session = instance.context.data["ftrackSession"]
+        self.session = context.data["ftrackSession"]
 
-        input_data = instance.data["hierarchyContext"]
+        input_data = context.data["hierarchyContext"]
         self.import_to_ftrack(input_data)
 
     def import_to_ftrack(self, input_data, parent=None):
         for entity_name in input_data:
             entity_data = input_data[entity_name]
-            entity_type = entity_data['entity_type']
+            entity_type = entity_data['entity_type'].capitalize()
 
             if entity_type.lower() == 'project':
                 query = 'Project where full_name is "{}"'.format(entity_name)
@@ -88,7 +89,8 @@ class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
             tasks_to_create = []
             for child in entity['children']:
                 if child.entity_type.lower() == 'task':
-                    existing_tasks.append(child['type']['name'])
+                    existing_tasks.append(child['name'])
+                    # existing_tasks.append(child['type']['name'])
 
             for task in tasks:
                 if task in existing_tasks:
@@ -124,7 +126,7 @@ class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
             'parent': parent
         })
         # TODO not secured!!! - check if task_type exists
-        task['type'] = self.task_types[task_type]
+        task['type'] = self.task_types[self.task_maping[task_type]]
 
         self.session.commit()
 

@@ -108,7 +108,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
             # "hierarchy": hierarchy,
             # "parents": parents,
             "family": family,
-            "families": [families],
+            "families": [families, 'ftrack'],
             "publish": True,
             # "files": files_list
         })
@@ -178,7 +178,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         "label": "{0} - {1} > {2}".format(name, task, subset),
                         "name": subset_name,
                         "family": inst["family"],
-                        "families": [subset],
+                        "families": [subset, 'ftrack'],
                         "jsonData": inst,
                         # "parents": , # bez tasku
                         # "hierarchy": ,

@@ -55,6 +55,6 @@ class CollectHierarchyContext(pyblish.api.ContextPlugin):
             final_context[project_name]['entity_type'] = 'Project'
             final_context[project_name]['childs'] = temp_context
 
-            # adding hierarchy context to instance
-            instance.data["hierarchyContext"] = final_context
-            self.log.debug("instance.data is: {}".format(instance.data))
+        # adding hierarchy context to instance
+        context.data["hierarchyContext"] = final_context
+        self.log.debug("instance.data is: {}".format(context.data))

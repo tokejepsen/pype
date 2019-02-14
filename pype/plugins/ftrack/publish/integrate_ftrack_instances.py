@@ -25,7 +25,10 @@ class IntegrateFtrackInstance(pyblish.api.InstancePlugin):
                       'write': 'img',
                       'render': 'render',
                       'nukescript': 'comp',
-                      'review': 'mov'}
+                      'review': 'mov',
+                      # 'clip': 'mov',
+                      # 'projectfile': 'scene'
+                      }
     exclude = []
 
     def process(self, instance):
@@ -65,7 +68,7 @@ class IntegrateFtrackInstance(pyblish.api.InstancePlugin):
                     "name": "ftrackreview-mp4",
                     "metadata": {'ftr_meta': json.dumps({
                                  'frameIn': int(instance.data["startFrame"]),
-                                 'frameOut': int(instance.data["startFrame"]),
+                                 'frameOut': int(instance.data["endFrame"]),
                                  'frameRate': 25})}
                 }
             elif ext in [".jpg", ".jpeg"]:
