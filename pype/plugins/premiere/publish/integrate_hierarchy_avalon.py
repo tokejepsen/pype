@@ -2,7 +2,7 @@ import pyblish.api
 from avalon import io
 
 
-class IntegrateHierarchyToAvalon(pyblish.api.ContextPlugin):
+class IntegrateHierarchyToAvalon(pyblish.api.InstancePlugin):
     """
     Create entities in ftrack based on collected data from premiere
 
@@ -12,15 +12,15 @@ class IntegrateHierarchyToAvalon(pyblish.api.ContextPlugin):
     label = 'Integrate Hierarchy To Avalon'
     families = ['clip']
 
-    def process(self, context):
-        if "hierarchyContext" not in context.data:
+    def process(self, instance):
+        if "hierarchyContext" not in instance.data:
             return
 
         self.db = io
         if not self.db.Session:
             self.db.install()
 
-        input_data = context.data["hierarchyContext"]
+        input_data = instance.data["hierarchyContext"]
         self.import_to_avalon(input_data)
 
     def import_to_avalon(self, input_data, parent=None):

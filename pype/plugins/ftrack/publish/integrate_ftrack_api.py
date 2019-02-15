@@ -43,8 +43,12 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
         return query
 
     def process(self, instance):
+
         session = instance.context.data["ftrackSession"]
-        task = instance.context.data["ftrackTask"]
+        if instance.data.get("ftrackTask", None) is not None:
+            task = instance.data["ftrackTask"]
+        else:
+            task = instance.context.data["ftrackTask"]
 
         info_msg = "Created new {entity_type} with data: {data}"
         info_msg += ", metadata: {metadata}."

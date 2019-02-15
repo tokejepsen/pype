@@ -2,7 +2,7 @@ import pyblish.api
 from avalon import api
 
 
-class CollectHierarchyContext(pyblish.api.ContextPlugin):
+class CollectHierarchyContext(pyblish.api.InstancePlugin):
     """Collecting hierarchy context from `parents` and `hierarchy` data
     present in `clip` family instances coming from the request json data file
 
@@ -22,39 +22,40 @@ class CollectHierarchyContext(pyblish.api.ContextPlugin):
                 new_dict[key] = ex_dict[key]
         return new_dict
 
-    def process(self, context):
+    def process(self, instance):
 
         temp_context = {}
-        for instance in context.data["instances"]:
-            if instance.data['family'] is 'projectfile':
-                continue
-            in_info = {}
-            name = instance.data['asset']
-            # suppose that all instances are Shots
-            in_info['entity_type'] = 'Shot'
-            # TODO: get custom attributes
-            in_info['custom_attributes'] = {}
-            # TODO: get tasks
-            in_info['tasks'] = [instance.data['task']]
-            parents = instance.data.get('parents', [])
-            actual = {name: in_info}
-            for parent in reversed(parents):
-                next_dict = {}
-                parent_name = parent["entityName"]
-                next_dict[parent_name] = {}
-                next_dict[parent_name]["entity_type"] = parent["entityType"]
-                next_dict[parent_name]["childs"] = actual
-                actual = next_dict
 
-            temp_context = self.update_dict(temp_context, actual)
+        if instance.data['family'] is 'projectfile':
+            return
 
-            # TODO: 100% sure way of get project! Will be Name or Code?
-            project_name = api.Session["AVALON_PROJECT"]
-            final_context = {}
-            final_context[project_name] = {}
-            final_context[project_name]['entity_type'] = 'Project'
-            final_context[project_name]['childs'] = temp_context
+        in_info = {}
+        name = instance.data['asset']
+        # suppose that all instances are Shots
+        in_info['entity_type'] = 'Shot'
+        # TODO: get custom attributes
+        in_info['custom_attributes'] = {}
+        # TODO: get tasks
+        in_info['tasks'] = [instance.data['task']]
+        parents = instance.data.get('parents', [])
+        actual = {name: in_info}
+        for parent in reversed(parents):
+            next_dict = {}
+            parent_name = parent["entityName"]
+            next_dict[parent_name] = {}
+            next_dict[parent_name]["entity_type"] = parent["entityType"]
+            next_dict[parent_name]["childs"] = actual
+            actual = next_dict
+
+        temp_context = self.update_dict(temp_context, actual)
+
+        # TODO: 100% sure way of get project! Will be Name or Code?
+        project_name = api.Session["AVALON_PROJECT"]
+        final_context = {}
+        final_context[project_name] = {}
+        final_context[project_name]['entity_type'] = 'Project'
+        final_context[project_name]['childs'] = temp_context
 
         # adding hierarchy context to instance
-        context.data["hierarchyContext"] = final_context
-        self.log.debug("instance.data is: {}".format(context.data))
+        instance.data["hierarchyContext"] = final_context
+        self.log.debug("instance.data is: {}".format(instance.data))

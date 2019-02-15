@@ -38,9 +38,13 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
 
         presets = context.data["presets"]
         rules_tasks = presets["rules_tasks"]
+        ftrack_types = rules_tasks["ftrackTypes"]
+        assert ftrack_types, "No `ftrack_types` data in `/templates/presets/[host]/rules_tasks.json` file"
+
+        context.data["ftrackTypes"] = ftrack_types
 
         asset_default = presets["asset_default"]
-        assert instances_data, "No `asset_default` data in json file"
+        assert asset_default, "No `asset_default` data in `/templates/presets/[host]/asset_default.json` file"
 
         asset_name = a_session["AVALON_ASSET"]
         entity = io.find_one({"name": asset_name,
@@ -151,6 +155,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
             for task in tasks:
                 host = rules_tasks["taskHost"][task]
                 subsets = rules_tasks["taskSubsets"][task]
+                ftrack_task_type = ftrack_types[task]
 
                 for subset in subsets:
                     if inst["representations"].get(subset, None):
@@ -168,6 +173,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         "subset": subset_name,
                         "stagingDir": staging_dir,
                         "task": task,
+                        "taskType": ftrack_task_type,
                         "fstart": frame_start,
                         "handles": handles,
                         "host": host,

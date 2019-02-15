@@ -26,8 +26,8 @@ class IntegrateFtrackInstance(pyblish.api.InstancePlugin):
                       'render': 'render',
                       'nukescript': 'comp',
                       'review': 'mov',
-                      # 'clip': 'mov',
-                      # 'projectfile': 'scene'
+                      'clip': 'mov',
+                      'projectfile': 'scene'
                       }
     exclude = []
 

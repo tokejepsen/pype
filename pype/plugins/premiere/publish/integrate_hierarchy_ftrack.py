@@ -1,7 +1,7 @@
 import pyblish.api
 
 
-class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
+class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
     """
     Create entities in ftrack based on collected data from premiere
     Example of entry data:
@@ -29,19 +29,22 @@ class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
     label = 'Integrate Hierarchy To Ftrack'
     families = ["clip"]
     optional = False
-    task_maping = {'blocking': 'Layout'}
 
-    def process(self, context):
-        if "hierarchyContext" not in context.data:
+    def process(self, instance):
+        if "hierarchyContext" not in instance.data:
             return
 
         self.ft_project = None
-        self.session = context.data["ftrackSession"]
+        self.session = instance.context.data["ftrackSession"]
 
-        input_data = context.data["hierarchyContext"]
-        self.import_to_ftrack(input_data)
+        input_data = instance.data["hierarchyContext"]
 
-    def import_to_ftrack(self, input_data, parent=None):
+        # adding ftrack types from presets
+        ftrack_types = instance.context.data['ftrackTypes']
+
+        self.import_to_ftrack(input_data, ftrack_types)
+
+    def import_to_ftrack(self, input_data, ftrack_types, parent=None):
         for entity_name in input_data:
             entity_data = input_data[entity_name]
             entity_type = entity_data['entity_type'].capitalize()
@@ -101,13 +104,14 @@ class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
             for task in tasks_to_create:
                 self.create_task(
                     name=task,
-                    task_type=task,
+                    task_type=ftrack_types[task],
                     parent=entity
                 )
                 self.session.commit()
 
             if 'childs' in entity_data:
-                self.import_to_ftrack(entity_data['childs'], entity)
+                self.import_to_ftrack(
+                    entity_data['childs'], ftrack_types, entity)
 
     def get_all_task_types(self, project):
         tasks = {}
@@ -126,7 +130,7 @@ class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
             'parent': parent
         })
         # TODO not secured!!! - check if task_type exists
-        task['type'] = self.task_types[self.task_maping[task_type]]
+        task['type'] = self.task_types[task_type]
 
         self.session.commit()
 

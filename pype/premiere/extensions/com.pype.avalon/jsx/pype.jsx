@@ -371,6 +371,7 @@ pype = {
       (clip.mediaType !== 'Video')) {
       return false;
     }
+    var presets = pype.getPresets();
     var pdClips = pypeData.clips;
     var hierarchy;
     var parents;
@@ -392,23 +393,7 @@ pype = {
     instance['name'] = clip.name;
     instance['hierarchy'] = hierarchy;
     instance['parents'] = parents;
-    instance['representations'] = {
-      reference: {
-        preset: 'h264',
-        representation: 'mp4'
-      },
-      thumbnail: {
-        representation: 'png'
-      },
-      plates: {
-        preset: 'prores422',
-        representation: 'mov'
-      },
-      sound: {
-        preset: '44khz',
-        representation: 'wav'
-      }
-    };
+    instance['representations'] = presets.rules_tasks.representations;
     // metadata
     var metadata = {};
     // TODO: how to get colorspace clip info
@@ -475,7 +460,23 @@ pype = {
 
     return instances;
   },
-
+  getPresets: function () {
+    var templ_path = pype.convertPathString($.getenv("PYPE_STUDIO_TEMPLATES"));
+    var preset_path = templ_path + "/presets/premiere";
+    var presets = {};
+    var preset_files = Folder(preset_path).getFiles();
+    for (var f = 0; f < preset_files.length; f++) {
+      var sliced_file = ('' + preset_files[f]).split('/')
+      var file_name = sliced_file.slice((sliced_file.length - 2, -1))
+      var name = ('' + file_name).split('.')[0]
+      $.writeln()
+      var file = new File(preset_files[f]);
+      file.encoding = "UTF8";
+      file.open("r", "TEXT", "????");
+      presets[name] = JSON.parse(file.read());
+    }
+    return presets
+  },
   /**
    * Return request json data object with instances for pyblish
    * @param stagingDir {string} - path to temp directory
@@ -776,5 +777,6 @@ function include(arr, obj) {
     if (arr[i] == obj) return true;
   }
 }
-var instances = pype.getPyblishRequest();
-pype.encodeRepresentation(JSON.parse(instances));
+
+// var instances = pype.getPyblishRequest();
+// pype.encodeRepresentation(JSON.parse(instances));
