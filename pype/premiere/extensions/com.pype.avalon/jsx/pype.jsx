@@ -525,12 +525,12 @@ pype = {
     var file = name + '_' +
       family +
       '_v' + version +
-      '.png';
+      '.jpg';
     var fullPathToFile = outputPath +
       $._PPP_.getSep() +
       file;
     $.writeln(fullPathToFile);
-    var expPNG = activeSequence.exportFramePNG(
+    var expJPEG = activeSequence.exportFrameJPEG(
       pype.convertSecToTimecode(time, fps),
       pype.convertPathString(fullPathToFile).split('/').join($._PPP_.getSep())
     );

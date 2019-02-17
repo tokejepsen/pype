@@ -4,6 +4,7 @@ import sys
 from pysync import walktree
 
 from avalon import api as avalon
+from avalon.lib import launch
 from pyblish import api as pyblish
 from app import api as app
 from pprint import pprint
@@ -25,6 +26,14 @@ PLUGINS_DIR = os.path.join(PACKAGE_DIR, "plugins")
 PUBLISH_PATH = os.path.join(
     PLUGINS_DIR, "premiere", "publish"
 ).replace("\\", "/")
+
+if os.getenv("PUBLISH_PATH", None):
+    os.environ["PUBLISH_PATH"] = os.pathsep.join(
+        os.environ["PUBLISH_PATH"].split(os.pathsep)
+        + [PUBLISH_PATH]
+    )
+else:
+    os.environ["PUBLISH_PATH"] = PUBLISH_PATH
 
 LOAD_PATH = os.path.join(PLUGINS_DIR, "premiere", "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "premiere", "create")
@@ -82,9 +91,6 @@ def install():
     reg_paths = request_aport("/api/register_plugin_path",
                               {"publish_path": PUBLISH_PATH})
 
-    # adding publish plugin path to environment
-    os.environ['PPRO_PUBLISH_PATH'] = reg_paths
-
     log.info(str(reg_paths))
 
     avalon.register_plugin_path(avalon.Loader, LOAD_PATH)
@@ -105,7 +111,22 @@ def install():
 
     # synchronize extensions
     extensions_sync()
-    api.message(title="pyblish_paths", message=str(reg_paths), level="info")
+
+    message = "The Pype extension has been installed. " \
+        "\nThe following publishing paths has been registered: " \
+        "\n\n{}".format(
+            reg_paths)
+    api.message(title="pyblish_paths", message=message, level="info")
+
+    # launching premiere
+    exe = r"C:\Program Files\Adobe\Adobe Premiere Pro CC 2019\Adobe Premiere Pro.exe".replace(
+        "\\", "/")
+
+    launch(
+        executable=exe,
+        args=[],
+        environment=dict(os.environ),
+        cwd=os.getcwd())
 
 
 def uninstall():

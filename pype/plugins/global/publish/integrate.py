@@ -50,11 +50,26 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if [ef for ef in self.exclude_families
                 if instance.data["family"] in ef]:
             return
+        context = instance.context
+
+        # get integratedSubsets with already integrated subsets names
+        integrated_subsets = context.data.get("integratedSubsets", None)
+
+        # check if the context key exist and create empty list if not
+        if not integrated_subsets:
+            integrated_subsets = list()
+            context.data["integratedSubsets"] = integrated_subsets
+
+        # skip if a subset has been already integrated from another instance to
+        # to avoid duplicity
+        if instance.data['name'] in integrated_subsets:
+            return
 
         self.register(instance)
 
         self.log.info("Integrating Asset in to the database ...")
         self.integrate(instance)
+        context.data["integratedSubsets"].append(instance.data['name'])
 
     def register(self, instance):
         # Required environment variables
@@ -118,11 +133,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         assumed_data = instance.data["assumedTemplateData"]
         assumed_version = assumed_data["VERSION"]
-        if assumed_version != next_version:
-            raise AttributeError("Assumed version 'v{0:03d}' does not match"
-                                 "next version in database "
-                                 "('v{1:03d}')".format(assumed_version,
-                                                       next_version))
+        # if assumed_version != next_version:
+        #     raise AttributeError("Assumed version 'v{0:03d}' does not match"
+        #                          "next version in database "
+        #                          "('v{1:03d}')".format(assumed_version,
+        #                                                next_version))
 
         # get version number from instance data and use it if version higher
         instance_version = instance.data.get('version', None)

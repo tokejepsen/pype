@@ -88,7 +88,10 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
         host = a_session["AVALON_APP"]
         family = "projectfile"
         families = "filesave"
-        subset_name = "{0}_{1}".format(task, family)
+        subset_name = "{0}{1}".format(family, 'Default')
+        instance_name = "{0}_{1}_{2}".format(name,
+                                             family,
+                                             subset_name)
         # Set label
         label = "{0} - {1} > {2}".format(name, task, families)
 
@@ -97,7 +100,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                        if inst.get("family", None) in 'projectfile']
         self.log.debug('pf_instance: {}'.format(pf_instance))
         # get working file into instance for publishing
-        instance = context.create_instance(subset_name)
+        instance = context.create_instance(instance_name)
         if pf_instance:
             instance.data.update(pf_instance[0])
         instance.data.update({
@@ -164,10 +167,20 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                     else:
                         continue
 
-                    subset_name = "{0}_{1}".format(task, subset)
-                    instance = context.create_instance(subset_name)
+                    # skip if thumnail in name of subset
+                    if "thumbnail" in subset:
+                        continue
+
+                    subset_name = "{0}{1}".format(subset, 'Default')
+                    # create unique subset's name
+                    name = "{0}_{1}_{2}".format(asset,
+                                                inst["family"],
+                                                subset_name)
+
+                    instance = context.create_instance(name)
                     files = [f for f in files_list
-                             if subset in f]
+                             if subset in f or "thumbnail" in f
+                             ]
 
                     instance.data.update({
                         "subset": subset_name,
@@ -181,8 +194,8 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                         "hierarchy": hierarchy,
                         "parents": parents,
                         "files": files,
-                        "label": "{0} - {1} > {2}".format(name, task, subset),
-                        "name": subset_name,
+                        "label": "{0} - {1} > {2}".format(asset, task, subset_name),
+                        "name": name,
                         "family": inst["family"],
                         "families": [subset, 'ftrack'],
                         "jsonData": inst,

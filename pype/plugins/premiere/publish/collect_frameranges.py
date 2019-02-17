@@ -30,3 +30,4 @@ class CollectFrameranges(pyblish.api.InstancePlugin):
 
         instance.data['startFrame'] = fstart
         instance.data['endFrame'] = fend
+        instance.data['fps'] = metadata['ppro.timeline.fps']

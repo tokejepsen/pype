@@ -8,7 +8,7 @@ class IntegrateAssumedDestination(pyblish.api.InstancePlugin):
     """Generate the assumed destination path where the file will be stored"""
 
     label = "Integrate Assumed Destination"
-    order = pyblish.api.IntegratorOrder - 0.2
+    order = pyblish.api.IntegratorOrder - 0.05
     families = ["clip"]
 
     def process(self, instance):

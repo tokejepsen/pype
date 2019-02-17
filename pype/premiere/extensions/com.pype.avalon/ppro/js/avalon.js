@@ -130,6 +130,9 @@ function publish() {
       // version up project
       csi.evalScript('pype.versionUpWorkFile();');
 
+      var publish_path = window.ENV['PUBLISH_PATH'];
+      // register publish path
+      api.register_plugin_path(publish_path).then(displayResult);
       // send json to pyblish
       api.publish(jsonRequestFile, gui).then(displayResult);
     });
