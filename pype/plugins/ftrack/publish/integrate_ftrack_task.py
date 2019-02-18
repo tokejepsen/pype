@@ -24,9 +24,9 @@ class IntegrateFtrackTask(pyblish.api.InstancePlugin):
 
         project = instance.context.data['avalonSession']['AVALON_PROJECT']
         asset = instance.data['asset']
-        task = instance.data['task']
-        ftrack_types = instance.context.data['ftrackTypes']
-        task_type = ftrack_types[task]
+
+        # TODO: how to process task iterable
+        task = instance.data['tasks'][0]
 
         query = (
             'Task where project.full_name is "{0}" and '

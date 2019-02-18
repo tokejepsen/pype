@@ -13,13 +13,21 @@ class ExtractJSON(pyblish.api.ContextPlugin):
         json_path = context.data['post_json_data_path']
 
         data = dict(self.serialize(context.data()))
-        # self.log.info(data)
 
         instances_data = []
         for instance in context:
 
             iData = {}
             for key, value in instance.data.items():
+                self.log.info("key: {}\nvalue: {}\n\n".format(key, value))
+
+                if "dynamic" in str(type(value)):
+                    self.log.info("type: {}".format(type(value)))
+                    value = str(value)
+
+                if isinstance(value, list):
+                    value = dict(self.serialize({key: value}))
+
                 if isinstance(value, clique.Collection):
                     value = value.format()
 
@@ -64,6 +72,7 @@ class ExtractJSON(pyblish.api.ContextPlugin):
             return data
 
         for key, value in data.items():
+            # self.log.info("key1: {}\nvalue2: {}\n\n".format(key, value))
             if key in ["records", "instances", "results"]:
                 # escape all record objects
                 data[key] = None

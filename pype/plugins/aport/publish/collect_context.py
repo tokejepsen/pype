@@ -46,7 +46,7 @@ class CollectContextDataFromAport(pyblish.api.ContextPlugin):
 
         # get data from json file recieved
         with open(rqst_json_data_path) as f:
-            context.data['json_data'] = json_data = json.load(f)
+            context.data['jsonData'] = json_data = json.load(f)
         assert json_data, "No `data` in json file"
 
         # get and check host type

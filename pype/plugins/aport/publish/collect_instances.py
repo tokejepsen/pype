@@ -27,7 +27,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
     def process(self, context):
 
         a_session = context.data.get("avalonSession")
-        json_data = context.data.get("json_data", None)
+        json_data = context.data.get("jsonData", None)
         assert json_data, "No `json_data` data in json file"
 
         instances_data = json_data.get("instances", None)
@@ -155,57 +155,81 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                 tasks = rules_tasks["defaultTasks"]
             self.log.debug("tasks: `{}`".format(tasks))
 
+            subset_lst = []
+            subset_dict = {}
             for task in tasks:
+                # create list of tasks for creation
+                if not inst.get('tasks', None):
+                    inst['tasks'] = list()
+                if not inst.get('tasksTypes', None):
+                    inst['tasksTypes'] = {}
+
+                # append taks into list for later hierarchy cration
+                ftrack_task_type = ftrack_types[task]
+                if task not in inst['tasks']:
+                    inst['tasks'].append(task)
+                    inst['tasksTypes'][task] = ftrack_task_type
+
                 host = rules_tasks["taskHost"][task]
                 subsets = rules_tasks["taskSubsets"][task]
-                ftrack_task_type = ftrack_types[task]
+                for sub in subsets:
+                    self.log.debug(sub)
+                    try:
+                        isinstance(subset_dict[sub], list)
+                    except:
+                        subset_dict[sub] = list()
 
-                for subset in subsets:
-                    if inst["representations"].get(subset, None):
-                        repr = inst["representations"][subset]
-                        ext = repr['representation']
-                    else:
-                        continue
+                    subset_dict[sub].append(task)
 
-                    # skip if thumnail in name of subset
-                    if "thumbnail" in subset:
-                        continue
+                subset_lst.extend([s for s in subsets if s not in subset_lst])
 
-                    subset_name = "{0}{1}".format(subset, 'Default')
-                    # create unique subset's name
-                    name = "{0}_{1}_{2}".format(asset,
-                                                inst["family"],
-                                                subset_name)
+            for subset in subset_lst:
+                if inst["representations"].get(subset, None):
+                    repr = inst["representations"][subset]
+                    ext = repr['representation']
+                else:
+                    continue
 
-                    instance = context.create_instance(name)
-                    files = [f for f in files_list
-                             if subset in f or "thumbnail" in f
-                             ]
+                # skip if thumnail in name of subset
+                if "thumbnail" in subset:
+                    continue
 
-                    instance.data.update({
-                        "subset": subset_name,
-                        "stagingDir": staging_dir,
-                        "task": task,
-                        "taskType": ftrack_task_type,
-                        "fstart": frame_start,
-                        "handles": handles,
-                        "host": host,
-                        "asset": asset,
-                        "hierarchy": hierarchy,
-                        "parents": parents,
-                        "files": files,
-                        "label": "{0} - {1} > {2}".format(asset, task, subset_name),
-                        "name": name,
-                        "family": inst["family"],
-                        "families": [subset, 'ftrack'],
-                        "jsonData": inst,
-                        # "parents": , # bez tasku
-                        # "hierarchy": ,
-                        "publish": True,
-                        "version": version})
-                    self.log.info(
-                        "collected instance: {}".format(instance.data))
-                    instances.append(instance)
+                subset_name = "{0}{1}".format(subset, 'Default')
+                # create unique subset's name
+                name = "{0}_{1}_{2}".format(asset,
+                                            inst["family"],
+                                            subset_name)
+
+                instance = context.create_instance(name)
+                files = [f for f in files_list
+                         if subset in f or "thumbnail" in f
+                         ]
+
+                instance.data.update({
+                    "subset": subset_name,
+                    "stagingDir": staging_dir,
+                    "tasks": subset_dict[subset],
+                    "taskTypes": inst['tasksTypes'],
+                    "fstart": frame_start,
+                    "handles": handles,
+                    "host": host,
+                    "asset": asset,
+                    "hierarchy": hierarchy,
+                    "parents": parents,
+                    "files": files,
+                    "label": "{0} - {1}".format(
+                        asset, subset_name),
+                    "name": name,
+                    "family": inst["family"],
+                    "families": [subset, 'ftrack'],
+                    "jsonData": inst,
+                    # "parents": , # bez tasku
+                    # "hierarchy": ,
+                    "publish": True,
+                    "version": version})
+                self.log.info(
+                    "collected instance: {}".format(instance.data))
+                instances.append(instance)
 
         context.data["instances"] = instances
 

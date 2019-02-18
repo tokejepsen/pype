@@ -2,7 +2,7 @@ import pyblish.api
 from avalon import api
 
 
-class CollectHierarchyContext(pyblish.api.InstancePlugin):
+class CollectHierarchyContext(pyblish.api.ContextPlugin):
     """Collecting hierarchy context from `parents` and `hierarchy` data
     present in `clip` family instances coming from the request json data file
 
@@ -22,32 +22,36 @@ class CollectHierarchyContext(pyblish.api.InstancePlugin):
                 new_dict[key] = ex_dict[key]
         return new_dict
 
-    def process(self, instance):
-
+    def process(self, context):
+        json_data = context.data.get("jsonData", None)
         temp_context = {}
+        for instance in json_data['instances']:
+            if instance['family'] in 'projectfile':
+                continue
 
-        if instance.data['family'] is 'projectfile':
-            return
+            in_info = {}
+            name = instance['name']
+            # suppose that all instances are Shots
+            in_info['entity_type'] = 'Shot'
+            # TODO: get custom attributes
+            in_info['custom_attributes'] = {}
+            # TODO: get tasks
+            in_info['tasks'] = instance['tasks']
 
-        in_info = {}
-        name = instance.data['asset']
-        # suppose that all instances are Shots
-        in_info['entity_type'] = 'Shot'
-        # TODO: get custom attributes
-        in_info['custom_attributes'] = {}
-        # TODO: get tasks
-        in_info['tasks'] = [instance.data['task']]
-        parents = instance.data.get('parents', [])
-        actual = {name: in_info}
-        for parent in reversed(parents):
-            next_dict = {}
-            parent_name = parent["entityName"]
-            next_dict[parent_name] = {}
-            next_dict[parent_name]["entity_type"] = parent["entityType"]
-            next_dict[parent_name]["childs"] = actual
-            actual = next_dict
+            parents = instance.get('parents', [])
 
-        temp_context = self.update_dict(temp_context, actual)
+            actual = {name: in_info}
+
+            for parent in reversed(parents):
+                next_dict = {}
+                parent_name = parent["entityName"]
+                next_dict[parent_name] = {}
+                next_dict[parent_name]["entity_type"] = parent["entityType"]
+                next_dict[parent_name]["childs"] = actual
+                actual = next_dict
+
+            temp_context = self.update_dict(temp_context, actual)
+            self.log.debug(temp_context)
 
         # TODO: 100% sure way of get project! Will be Name or Code?
         project_name = api.Session["AVALON_PROJECT"]
@@ -57,5 +61,6 @@ class CollectHierarchyContext(pyblish.api.InstancePlugin):
         final_context[project_name]['childs'] = temp_context
 
         # adding hierarchy context to instance
-        instance.data["hierarchyContext"] = final_context
-        self.log.debug("instance.data is: {}".format(instance.data))
+        context.data["hierarchyContext"] = final_context
+        self.log.debug("context.data[hierarchyContext] is: {}".format(
+            context.data["hierarchyContext"]))

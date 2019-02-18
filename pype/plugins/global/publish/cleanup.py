@@ -13,7 +13,6 @@ class CleanUp(pyblish.api.InstancePlugin):
 
     order = pyblish.api.IntegratorOrder + 10
     label = "Clean Up"
-    optional = True
 
     def process(self, instance):
 

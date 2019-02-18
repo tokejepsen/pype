@@ -1,7 +1,7 @@
 import pyblish.api
 
 
-class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
+class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
     """
     Create entities in ftrack based on collected data from premiere
     Example of entry data:
@@ -30,17 +30,17 @@ class IntegrateHierarchyToFtrack(pyblish.api.InstancePlugin):
     families = ["clip"]
     optional = False
 
-    def process(self, instance):
-        if "hierarchyContext" not in instance.data:
+    def process(self, context):
+        if "hierarchyContext" not in context.data:
             return
 
         self.ft_project = None
-        self.session = instance.context.data["ftrackSession"]
+        self.session = context.data["ftrackSession"]
 
-        input_data = instance.data["hierarchyContext"]
+        input_data = context.data["hierarchyContext"]
 
         # adding ftrack types from presets
-        ftrack_types = instance.context.data['ftrackTypes']
+        ftrack_types = context.data['ftrackTypes']
 
         self.import_to_ftrack(input_data, ftrack_types)
 

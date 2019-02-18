@@ -285,8 +285,8 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
                 assetversion_entity["thumbnail_id"] = component_entity["id"]
 
             # Inform user about no changes to the database.
-            if (component_entity and not component_overwrite and
-                    not new_component):
+            if (component_entity and not component_overwrite
+                    and not new_component):
                 data["component"] = component_entity
                 self.log.info(
                     "Found existing component, and no request to overwrite. "
