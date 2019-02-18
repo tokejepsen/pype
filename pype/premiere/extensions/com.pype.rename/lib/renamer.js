@@ -24,7 +24,7 @@ $('#renamer-modes a').click(function () {
   $('#renamerDropdown').html($(this).html());
   $('#renamer-ui .pane').css('display', 'none');
   $('#rpane-' + mode).css('display', 'block');
-  $('#renamer-modes').data('mode', mode);
+  $('#renamerDropdown').data('mode', mode);
   return false;
 });
 
@@ -34,7 +34,7 @@ $('#renamer-caseSelect a').click(function () {
 });
 
 $('#btn-rename').click(function () {
-  var mode = $('#renamer-modes').data('mode');
+  var mode = $('#renamerDropdown').data('mode');
   if (!mode) {
     mode = 'seqRename';
   }
@@ -108,6 +108,24 @@ $('#btn-rename').click(function () {
   }
 });
 
-// $.get('http://localhost:43')
+// add selection changed addEventListener
+csi.evalScript('renamer.registerActiveSelectionChanged()');
+csi.addEventListener('activeSequenceSelectionChanged', function (event) {
+  var mode = $('#renamerDropdown').data('mode');
+  if (mode !== 'seqRenameHierarchy') {
+    return;
+  }
+  var path = event.data[0].path.split('\\');
+  // test if path has more then 4 elements - folder/episode/sequence/filename
+  if (path.length > 4) {
+    var folder = path[path.length - 4];
+    var episode = path[path.length - 3];
+    var sequence = path[path.length - 2];
 
-// displayResults('-' + window.cep.process.AVALON_PROJECT);
+    if ($('#renamer-parse-path').prop('checked')) {
+      $('#rpane-' + mode + ' input[name=renamer-folder]').val(folder);
+      $('#rpane-' + mode + ' input[name=renamer-episode]').val(episode);
+      $('#rpane-' + mode + ' input[name=renamer-sequence]').val(sequence);
+    }
+  }
+});

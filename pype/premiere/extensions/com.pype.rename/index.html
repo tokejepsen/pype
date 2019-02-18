@@ -27,7 +27,7 @@ _______________.___._____________________
 		</script>
 
 		<script src="./lib/jquery-3.3.1.min.js"></script>
-		<script src="./lib/CSInterface-8.js"></script>
+		<script src="./lib/CSInterface.js"></script>
 		<script src="./lib/popper.min.js"></script>
 		<script src="./lib/bootstrap.min.js"></script>
 
@@ -54,7 +54,7 @@ _______________.___._____________________
         <button class="btn btn-secondary btn-sm dropdown-toggle"
                 type="button" id="renamerDropdown"
                 data-toggle="dropdown"
-                data-mode="seqRename"
+                data-mode="seqRenameHierarchy"
                 aria-haspopup="true"
                 aria-expanded="false">
           Sequential Rename With hierarchy
@@ -91,6 +91,10 @@ _______________.___._____________________
               <span class="input-group-text" id="basic-addon12">Sequence</span>
             </div>
             <input type="text" class="form-control" name="renamer-sequence" placeholder="sq01" aria-label="Sequence" aria-describedby="basic-addon12" value="sq01">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="renamer-parse-path">
+            <label class="form-check-label" for="renamer-parse-path">Parse tokens from filename</label>
           </div>
           <p>Use tokens of above fields to reference its value.</p>
           <div class="input-group input-group-sm mb-3">

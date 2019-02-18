@@ -1,4 +1,4 @@
-/* global app, XMPMeta, ExternalObject */
+/* global app, XMPMeta, ExternalObject, CSXSEvent, Folder */
 /* --------------------------------------
    -. ==  [ part 0f PyPE CluB ] == .-
 _______________.___._____________________
@@ -62,24 +62,41 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
     selected[c].name = selected[c].name.replace(egexp, data.episode);
     selected[c].name = selected[c].name.replace(sgexp, data.sequence);
 
-    metadata.clips.push(
-      {
-        'hierarchy': [
-          {
-            'entityType': 'folder',
-            'entityName': data.folder
-          },
-          {
-            'entityType': 'episode',
-            'entityName': data.episode
-          },
-          {
-            'entityType': 'sequence',
-            'entityName': data.sequence
-          }
-        ],
-        'name': selected[c].name
+    // fill in hierarchy if set
+    var parents = [];
+    var hierarchy = [];
+
+    if (data.folder) {
+      parents.push({
+        'entityType': 'folder',
+        'entityName': data.folder
       });
+      hierarchy.push(data.folder);
+    }
+
+    if (data.episode) {
+      parents.push({
+        'entityType': 'episode',
+        'entityName': data.episode
+      });
+      hierarchy.push(data.episode);
+    }
+
+    if (data.sequence) {
+      parents.push({
+        'entityType': 'sequence',
+        'entityName': data.sequence
+      });
+      hierarchy.push(data.sequence);
+    }
+
+    // push it to metadata
+    metadata.clips.push({
+      'parents': parents,
+      'hierarchy': hierarchy.join('/'),
+      'name': selected[c].name
+    });
+
     // add increment
     index = index + parseInt(data.increment);
   }
@@ -266,7 +283,47 @@ function keepExtension () {
   return app.setExtensionPersistent('com.pype.rename', 0);
 }
 
+/**
+ * Dispatch event with new selection
+ */
+renamer.activeSequenceSelectionChanged = function () {
+  var sel = app.project.activeSequence.getSelection();
+  var selection = [];
+  for (var i = 0; i < sel.length; i++) {
+    if (sel[i].name !== 'anonymous') {
+      selection.push({
+        'name': sel[i].name,
+        'path': sel[i].projectItem.getMediaPath()
+      });
+    }
+  }
+
+  var eoName;
+  if (Folder.fs === 'Macintosh') {
+    eoName = 'PlugPlugExternalObject';
+  } else {
+    eoName = 'PlugPlugExternalObject.dll';
+  }
+
+  var mylib = new ExternalObject('lib:' + eoName);
+
+  var eventObj = new CSXSEvent();
+  eventObj.type = 'activeSequenceSelectionChanged';
+  eventObj.data = JSON.stringify(selection);
+  eventObj.dispatch();
+  // app.setSDKEventMessage('selection changed', 'info');
+};
+
+/**
+ * Register active selection event dispatching
+ */
+renamer.registerActiveSelectionChanged = function () {
+  var success = app.bind('onActiveSequenceSelectionChanged', renamer.activeSequenceSelectionChanged);
+  return success;
+};
+
 keepExtension();
+
 // load the XMPScript library
 if (ExternalObject.AdobeXMPScript === undefined) {
   ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
