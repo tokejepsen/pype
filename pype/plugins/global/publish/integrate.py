@@ -184,7 +184,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                          "asset": ASSET,
                          "family": instance.data['family'],
                          "subset": subset["name"],
-                         "VERSION": version["name"],
+                         "version": int(version["name"]),
                          "hierarchy": hierarchy}
 
         template_publish = project["config"]["template"]["publish"]
