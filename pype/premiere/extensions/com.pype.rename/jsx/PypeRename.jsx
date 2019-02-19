@@ -47,9 +47,13 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
   var shotrg = RegExp('{shot}', 'i');
   var zero = res[1].replace(rx, '0');
   // iterate over selection
-  var metadata = {};
-  metadata['clips'] = [];
+  var metadata = renamer.getSequencePypeMetadata(sequence);
   for (var c = 0; c < selected.length; c++) {
+    var mediaType = selected[c].mediaType;
+    if (mediaType === 'Audio') {
+      continue
+    }
+    delete metadata.clips[selected[c].name];
     // convert index to string
     var indexStr = '' + index;
     // left-zero pad number
@@ -91,11 +95,10 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
     }
 
     // push it to metadata
-    metadata.clips.push({
+    metadata.clips[selected[c].name] = {
       'parents': parents,
       'hierarchy': hierarchy.join('/'),
-      'name': selected[c].name
-    });
+    };
 
     // add increment
     index = index + parseInt(data.increment);
@@ -103,7 +106,10 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
 
   renamer.setSequencePypeMetadata(sequence, metadata);
 
-  return JSON.stringify({'status': 'renamed ' + selected.length + ' clips'});
+  return JSON.stringify({
+    'status': 'renamed ' + selected.length + ' clips'
+  });
+
 };
 
 /**
@@ -144,7 +150,9 @@ renamer.renameSeq = function (data) { // eslint-disable-line no-unused-vars
     // add increment
     index = index + parseInt(data.increment);
   }
-  return JSON.stringify({'status': 'renamed ' + selected.length + ' clips'});
+  return JSON.stringify({
+    'status': 'renamed ' + selected.length + ' clips'
+  });
 };
 
 /**
@@ -164,7 +172,9 @@ renamer.renameSimple = function (newName) { // eslint-disable-line no-unused-var
     // find {shot} token and replace it with existing clip name
     selected[c].name = newName.replace(rx, selected[c].name);
   }
-  return JSON.stringify({'status': 'renamed ' + selected.length + ' clips'});
+  return JSON.stringify({
+    'status': 'renamed ' + selected.length + ' clips'
+  });
 };
 
 /**
@@ -187,7 +197,9 @@ renamer.renameFindReplace = function (data) { // eslint-disable-line no-unused-v
     // replace find with replaceWith
     selected[c].name = selected[c].name.replace(find, repl);
   }
-  return JSON.stringify({'status': 'renamed ' + selected.length + ' clips'});
+  return JSON.stringify({
+    'status': 'renamed ' + selected.length + ' clips'
+  });
 };
 
 /**
@@ -203,12 +215,14 @@ renamer.renameClipRename = function () { // eslint-disable-line no-unused-vars
 
   var regexp = new RegExp('.[^/.]+$');
   for (var c = 0; c < selected.length; c++) {
-  // suddenly causes syntax error on regexp? So using explicit contructor
-  // regexp above.
-  // selected[c].name = selected[c].projectItem.name.replace(/\.[^/.]+$/, '');
+    // suddenly causes syntax error on regexp? So using explicit contructor
+    // regexp above.
+    // selected[c].name = selected[c].projectItem.name.replace(/\.[^/.]+$/, '');
     selected[c].name = selected[c].projectItem.name.replace(regexp, '');
   }
-  return JSON.stringify({'status': 'renamed ' + selected.length + ' clips'});
+  return JSON.stringify({
+    'status': 'renamed ' + selected.length + ' clips'
+  });
 };
 
 /**
@@ -230,7 +244,9 @@ renamer.renameChangeCase = function (caseMode) { // eslint-disable-line no-unuse
       selected[c].name = selected[c].name.toUpperCase();
     }
   }
-  return JSON.stringify({'status': 'renamed ' + selected.length + ' clips'});
+  return JSON.stringify({
+    'status': 'renamed ' + selected.length + ' clips'
+  });
 };
 
 /**
@@ -273,13 +289,24 @@ renamer.getSequencePypeMetadata = function (sequence) { // eslint-disable-line n
   var kPProPrivateProjectMetadataURI = 'http://ns.adobe.com/premierePrivateProjectMetaData/1.0/';
   var metadata = sequence.projectItem.getProjectMetadata();
   var pypeData = 'pypeData';
+  var pypeDataN = 'Pype Data';
   var xmp = new XMPMeta(metadata);
+  app.project.addPropertyToProjectMetadataSchema(pypeData, pypeDataN, 2);
   var pypeDataValue = xmp.getProperty(kPProPrivateProjectMetadataURI, pypeData);
-
-  return JSON.parse(pypeDataValue);
+  if (pypeDataValue === undefined) {
+    var metadata = {
+      clips: {},
+      tags: {}
+    };
+    renamer.setSequencePypeMetadata(sequence, metadata);
+    pypeDataValue = xmp.getProperty(kPProPrivateProjectMetadataURI, pypeData);
+    return renamer.getSequencePypeMetadata(sequence);
+  } else {
+    return JSON.parse(pypeDataValue);
+  }
 };
 
-function keepExtension () {
+function keepExtension() {
   return app.setExtensionPersistent('com.pype.rename', 0);
 }
 
@@ -328,3 +355,6 @@ keepExtension();
 if (ExternalObject.AdobeXMPScript === undefined) {
   ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
 }
+
+// var seq = app.project.activeSequence;
+// renamer.getSequencePypeMetadata(seq);

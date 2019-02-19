@@ -375,12 +375,12 @@ pype = {
     var pdClips = pypeData.clips;
     var hierarchy;
     var parents;
-    for (var c = 0; c < pdClips.length; c++) {
-      if (pdClips[c].name === clip.name) {
-        parents = pdClips[c].parents;
-        hierarchy = pdClips[c].hierarchy;
-      }
+
+    if (pdClips[clip.name]) {
+      parents = pdClips[clip.name].parents;
+      hierarchy = pdClips[clip.name].hierarchy;
     }
+
     if (hierarchy === null) {
       alert('First you need to rename clip sequencially with hierarchy!\nUse `Pype Rename` extension', 'No hierarchy data available at clip ' + clip.name + '!', 'error');
       return;
@@ -812,5 +812,5 @@ function include(arr, obj) {
   }
 }
 
-// var instances = pype.getPyblishRequest();
+var instances = pype.getPyblishRequest();
 // pype.encodeRepresentation(JSON.parse(instances));

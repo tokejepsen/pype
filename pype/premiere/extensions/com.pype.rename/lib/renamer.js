@@ -12,7 +12,7 @@ _______________.___._____________________
 
 var csi = new CSInterface();
 
-function displayResults (data) {
+function displayResults(data) {
   var con = $('#output');
   con.html(data);
 }
@@ -40,71 +40,71 @@ $('#btn-rename').click(function () {
   }
   var data = '';
   switch (mode) {
-    case 'seqRenameHierarchy':
-      data = {
-        'folder': $('#rpane-' + mode + ' input[name=renamer-folder]').val(),
-        'episode': $('#rpane-' + mode + ' input[name=renamer-episode]').val(),
-        'sequence': $('#rpane-' + mode + ' input[name=renamer-sequence]').val(),
-        'pattern': $('#rpane-' + mode + ' input[name=renamer-pattern]').val(),
-        'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
-        'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
-      };
-      csi.evalScript('renamer.renameSeqHierarchy(' + JSON.stringify(data) + ');', function (result) {
-        displayResults(result);
-      });
-      break;
-    case 'seqRename':
-      data = {
-        'pattern': $('#rpane-' + mode + ' input[name=renamer-pattern]').val(),
-        'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
-        'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
-      };
-      csi.evalScript('renamer.renameSeq(' + JSON.stringify(data) + ');', function (result) {
-        displayResults(result);
-      });
-      break;
+  case 'seqRenameHierarchy':
+    data = {
+      'folder': $('#rpane-' + mode + ' input[name=renamer-folder]').val(),
+      'episode': $('#rpane-' + mode + ' input[name=renamer-episode]').val(),
+      'sequence': $('#rpane-' + mode + ' input[name=renamer-sequence]').val(),
+      'pattern': $('#rpane-' + mode + ' input[name=renamer-pattern]').val(),
+      'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
+      'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
+    };
+    csi.evalScript('renamer.renameSeqHierarchy(' + JSON.stringify(data) + ');', function (result) {
+      displayResults(result);
+    });
+    break;
+  case 'seqRename':
+    data = {
+      'pattern': $('#rpane-' + mode + ' input[name=renamer-pattern]').val(),
+      'start': $('#rpane-' + mode + ' input[name=renamer-start]').val(),
+      'increment': $('#rpane-' + mode + ' input[name=renamer-inc]').val()
+    };
+    csi.evalScript('renamer.renameSeq(' + JSON.stringify(data) + ');', function (result) {
+      displayResults(result);
+    });
+    break;
 
-    case 'simpleRename':
-      data = $('#rpane-' + mode + ' input[name=renamer-newName]').val();
-      displayResults(data);
-      csi.evalScript('renamer.renameSimple("' + data + '");', function (result) {
-        displayResults(result);
-      });
-      break;
+  case 'simpleRename':
+    data = $('#rpane-' + mode + ' input[name=renamer-newName]').val();
+    displayResults(data);
+    csi.evalScript('renamer.renameSimple("' + data + '");', function (result) {
+      displayResults(result);
+    });
+    break;
 
-    case 'findAndReplace':
-      data = {
-        'find': $('#rpane-' + mode + ' input[name=renamer-find]').val(),
-        'replaceWith': $('#rpane-' + mode + ' input[name=renamer-replace]').val()
-      };
-      csi.evalScript('renamer.renameFindReplace(' + JSON.stringify(data) + ');', function (result) {
-        displayResults(result);
-      });
-      break;
+  case 'findAndReplace':
+    data = {
+      'find': $('#rpane-' + mode + ' input[name=renamer-find]').val(),
+      'replaceWith': $('#rpane-' + mode + ' input[name=renamer-replace]').val()
+    };
+    csi.evalScript('renamer.renameFindReplace(' + JSON.stringify(data) + ');', function (result) {
+      displayResults(result);
+    });
+    break;
 
-    case 'matchSequence':
-      // not implemented
-      break;
+  case 'matchSequence':
+    // not implemented
+    break;
 
-    case 'clipRename':
-      csi.evalScript('renamer.renameClipRename();', function (result) {
-        displayResults(result);
-      });
-      break;
+  case 'clipRename':
+    csi.evalScript('renamer.renameClipRename();', function (result) {
+      displayResults(result);
+    });
+    break;
 
-    case 'changeCase':
-      var stringCase = 0;
-      var caseMode = $('#renamer-caseSelect').data('mode');
-      if (caseMode === 'uppercase') {
-        stringCase = 1;
-      }
-      $('#renamer-case').val(caseMode);
-      csi.evalScript('renamer.renameChangeCase("' + stringCase + '");', function (result) {
-        displayResults(result);
-      });
-      break;
+  case 'changeCase':
+    var stringCase = 0;
+    var caseMode = $('#renamer-caseSelect').data('mode');
+    if (caseMode === 'uppercase') {
+      stringCase = 1;
+    }
+    $('#renamer-case').val(caseMode);
+    csi.evalScript('renamer.renameChangeCase("' + stringCase + '");', function (result) {
+      displayResults(result);
+    });
+    break;
 
-    default:
+  default:
   }
 });
 

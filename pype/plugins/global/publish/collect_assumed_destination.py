@@ -115,6 +115,7 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
             # hierarchy = os.path.sep.join(hierarchy)
             hierarchy = os.path.join(*hierarchy)
 
+        self.log.info(hierarchy)
         template_data = {"root": api.Session["AVALON_PROJECTS"],
                          "project": {"name": project_name,
                                      "code": project['data']['code']},
@@ -126,5 +127,6 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
                          "hierarchy": hierarchy,
                          "representation": "TEMP"}
 
+        self.log.info(template_data)
         instance.data["assumedTemplateData"] = template_data
         instance.data["template"] = template

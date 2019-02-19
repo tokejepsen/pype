@@ -88,7 +88,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
         host = a_session["AVALON_APP"]
         family = "projectfile"
         families = "filesave"
-        subset_name = "{0}{1}".format(family, 'Default')
+        subset_name = "{0}{1}".format(task, 'Default')
         instance_name = "{0}_{1}_{2}".format(name,
                                              family,
                                              subset_name)
@@ -223,8 +223,6 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                     "family": inst["family"],
                     "families": [subset, 'ftrack'],
                     "jsonData": inst,
-                    # "parents": , # bez tasku
-                    # "hierarchy": ,
                     "publish": True,
                     "version": version})
                 self.log.info(
