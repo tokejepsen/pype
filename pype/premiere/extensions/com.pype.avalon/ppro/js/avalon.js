@@ -49,10 +49,12 @@ function loadJSX() {
   // load JSX scripts based on appName
   var extensionRootApp = extensionPath + '/jsx/' + appName + '/';
   csi.evalScript('$._ext.evalFiles("' + extensionRootApp + '")');
-  csi.evalScript('$._PPP_.logConsoleOutput()');
+  // csi.evalScript('$._PPP_.logConsoleOutput()');
+  getEnv();
+
   csi.evalScript('$._PPP_.updateEventPanel( "' + "all plugins are loaded" + '" )');
   csi.evalScript('$._PPP_.updateEventPanel( "' + "testing function done" + '" )');
-  getEnv();
+
 }
 
 // run all at loading

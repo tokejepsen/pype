@@ -113,8 +113,11 @@ def anatomy_fill(data):
 @pico.expose()
 def deregister_plugin_path():
     if os.getenv("PUBLISH_PATH", None):
-        aport_plugin_path = [p.replace("\\", "/") for p in os.environ["PUBLISH_PATH"].split(
-            os.pathsep) if "aport" in p][0]
+        aport_plugin_path = os.pathsep.join(
+            [p.replace("\\", "/")
+             for p in os.environ["PUBLISH_PATH"].split(os.pathsep)
+             if "aport" in p
+             or "ftrack" in p])
         os.environ["PUBLISH_PATH"] = aport_plugin_path
     else:
         log.warning("deregister_plugin_path(): No PUBLISH_PATH is registred")
@@ -124,7 +127,7 @@ def deregister_plugin_path():
 
 @pico.expose()
 def register_plugin_path(publish_path):
-    # deregister_plugin_path()
+    deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
             os.environ["PUBLISH_PATH"].split(os.pathsep) +

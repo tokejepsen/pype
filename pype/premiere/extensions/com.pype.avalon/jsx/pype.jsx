@@ -692,7 +692,7 @@ pype = {
         var splitName = outputName.split('.');
         newFileName = splitName[0] + '_v001.' + splitName[1];
         absPath = dirPath + newFileName;
-        app.project.saveAs(absPath);
+        app.project.saveAs(absPath.split('/').join($._PPP_.getSep()));
         return '001';
       }
     }
@@ -703,7 +703,7 @@ pype = {
 
     var fullOutPath = outputPath + $._PPP_.getSep() + outputName;
 
-    app.project.saveAs(fullOutPath);
+    app.project.saveAs(fullOutPath.split('/').join($._PPP_.getSep()));
 
     for (var a = 0; a < app.projects.numProjects; a++) {
       var currentProject = app.projects[a];
@@ -711,6 +711,17 @@ pype = {
         app.openDocument(originalPath); // Why first? So we don't frighten the user by making PPro's window disappear. :)
         currentProject.closeDocument();
       }
+    }
+  },
+  nextVersionCheck: function (dir, file, vCurVersStr, curVersStr, padding, nextVersNum) {
+    var replVers = vCurVersStr.replace(curVersStr, (nextVersNum).pad(padding));
+    var newFileName = file.replace(vCurVersStr, replVers);
+    var absPath = dir + newFileName;
+    var absPathF = new File(absPath);
+    if (absPathF.exists) {
+      return pype.nextVersionCheck(dir, file, vCurVersStr, curVersStr, padding, (nextVersNum + 1));
+    } else {
+      return absPathF
     }
   },
   versionUpWorkFile: function () {
@@ -724,19 +735,42 @@ pype = {
 
     if (search) {
       var match = parseInt(search[1], 10);
+      var padLength = search[1].length;
       version += match;
-      var replVers = search[0].replace(search[1], (version).pad(search[1].length));
+      var replVers = search[0].replace(search[1], (version).pad(padLength));
       newFileName = outputName.replace(search[0], replVers);
       absPath = dirPath + newFileName;
-      app.project.saveAs(absPath);
-      return newFileName;
+
+      // check if new file already exists and offer confirmation
+      var absPathF = new File(absPath);
+      if (absPathF.exists) {
+        var overwrite = confirm('The file already exists! Do you want to overwrite it? NO: will save it as next available version', false, 'Are you sure...?');
+        if (overwrite) {
+          // will overwrite
+          app.project.saveAs(absPath.split('/').join($._PPP_.getSep()));
+          return newFileName;
+        } else {
+          // will not overwrite
+          // will find next available version
+          absPathF = pype.nextVersionCheck(dirPath, outputName, search[0], search[1], padLength, (version + 1));
+          absPath = pype.convertPathString(absPathF.fsName)
+          newFileName = absPath.replace(dirPath, '')
+          $.writeln('newFileName: ' + newFileName)
+          // will save it as new file
+          app.project.saveAs(absPath.split('/').join($._PPP_.getSep()));
+          return newFileName;
+        };
+      } else {
+        app.project.saveAs(absPath.split('/').join($._PPP_.getSep()));
+        return newFileName;
+      };
     } else {
       var create = confirm('The project file name is missing version `_v###` \n example: `NameOfFile_v001.prproj`\n\n Would you like to create version?", true, "ERROR in name syntax');
       if (create) {
         var splitName = outputName.split('.');
         newFileName = splitName[0] + '_v001.' + splitName[1];
         absPath = dirPath + newFileName;
-        app.project.saveAs(absPath);
+        app.project.saveAs(absPath.split('/').join($._PPP_.getSep()));
         return newFileName;
       }
     }
