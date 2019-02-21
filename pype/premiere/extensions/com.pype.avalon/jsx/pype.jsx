@@ -687,7 +687,7 @@ pype = {
     if (search) {
       return search[1]
     } else {
-      var create = confirm('The project file name is missing version `_v###` \n example: `NameOfFile_v001.prproj`\n\n Would you like to create version?", true, "ERROR in name syntax');
+      var create = confirm('The project file name is missing version `_v###` \n example: `NameOfFile_v001.prproj`\n\n Would you like to create version?', true, 'ERROR in name syntax');
       if (create) {
         var splitName = outputName.split('.');
         newFileName = splitName[0] + '_v001.' + splitName[1];
