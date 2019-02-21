@@ -31,8 +31,10 @@ pype = {
 
   getProjectFileData: function () {
     app.enableQE();
+    var projPath = new File(app.project.path)
     var obj = {
       projectfile: app.project.name,
+      projectpath: projPath.fsName,
       projectdir: pype.convertPathString(app.project.path).split('/').slice(0, -1).join('/')
     };
     return JSON.stringify(obj);
@@ -578,7 +580,7 @@ pype = {
             key,
             instances[i].version,
             request.stagingDir,
-            instances[i].metadata['ppro.clip.start'],
+            (instances[i].metadata['ppro.clip.start'] + ((instances[i].metadata["ppro.clip.end"] - instances[i].metadata['ppro.clip.start']) / 2)),
             instances[i].metadata['ppro.timeline.fps']
           ));
         } else if (key === 'projectfile') {

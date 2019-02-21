@@ -108,6 +108,7 @@ function publish() {
   const path = require('path');
 
   csi.evalScript('pype.getProjectFileData();', function (result) {
+    displayResult(result);
     var data = JSON.parse(result);
     displayResult(stagingDir);
     displayResult(data.projectfile);
@@ -115,7 +116,7 @@ function publish() {
     displayResult('copy project file');
     displayResult(data.projectfile);
     displayResult(destination);
-    fs.copyFile(data.projectfile, destination);
+    fs.copyFile(data.projectpath, destination);
     displayResult('project file coppied!');
   });
 
