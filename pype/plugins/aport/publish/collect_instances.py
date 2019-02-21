@@ -176,7 +176,7 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                     self.log.debug(sub)
                     try:
                         isinstance(subset_dict[sub], list)
-                    except:
+                    except Exception:
                         subset_dict[sub] = list()
 
                     subset_dict[sub].append(task)

@@ -11,6 +11,7 @@ class CollectTemplates(pyblish.api.ContextPlugin):
     label = "Collect Templates"
 
     def process(self, context):
+        pype.reset_data_from_templates()
         pype.load_data_from_templates()
         context.data['anatomy'] = pype.Anatomy
         self.log.info("Anatomy templates collected...")

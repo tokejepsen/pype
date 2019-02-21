@@ -25,6 +25,7 @@ class IntegrateHierarchyToAvalon(pyblish.api.ContextPlugin):
 
     def import_to_avalon(self, input_data, parent=None):
         for name in input_data:
+            self.log.info('input_data[name]: {}'.format(input_data[name]))
             entity_data = input_data[name]
             entity_type = entity_data['entity_type']
 
@@ -70,6 +71,7 @@ class IntegrateHierarchyToAvalon(pyblish.api.ContextPlugin):
                 parents = []
                 visualParent = None
                 # do not store project's id as visualParent (silo asset)
+                self.log.info('parent[data]: {}'.format(parent['data']))
                 if self.av_project['_id'] != parent['_id']:
                     visualParent = parent['_id']
                     parents.extend(parent['data']['parents'])

@@ -119,7 +119,7 @@ class IntegrateAssumedDestination(pyblish.api.InstancePlugin):
                          "family": instance.data['family'],
                          "asset": asset_name,
                          "subset": subset_name,
-                         "VERSION": version_number,
+                         "version": version_number,
                          "hierarchy": hierarchy,
                          "representation": "TEMP"}
 

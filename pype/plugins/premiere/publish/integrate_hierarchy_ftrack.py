@@ -130,6 +130,8 @@ class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
             'parent': parent
         })
         # TODO not secured!!! - check if task_type exists
+        self.log.info(task_type)
+        self.log.info(self.task_types)
         task['type'] = self.task_types[task_type]
 
         self.session.commit()
