@@ -84,4 +84,5 @@ for (var c = 0; c < selected.length; c++) {
   };
 };
 
+pype.dumpSequenceMetadata(app.project.activeSequence, newItems)
 $.writeln(JSON.stringify(newItems))
