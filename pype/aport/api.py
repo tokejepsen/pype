@@ -26,6 +26,7 @@ SESSION = avalon.session
 # if not SESSION:
 #     io.install()
 
+log.warning(os.getenv('AVALON_WORKDIR').replace("\\", "/"))
 
 @pico.expose()
 def publish(json_data_path, gui):
@@ -48,7 +49,6 @@ def publish(json_data_path, gui):
         Exception: description
 
     """
-    cwd = os.getenv('AVALON_WORKDIR').replace("\\", "/")
 
     staging_dir = tempfile.mkdtemp(prefix="pype_aport_").replace("\\", "/")
     log.info("staging_dir: {}".format(staging_dir))
@@ -69,12 +69,15 @@ def publish(json_data_path, gui):
             ]
 
     log.debug(args)
-
+    # cwd = os.path.normpath(cwd)
+    # if os.path.exists(cwd):
+    #     log.warning("cwd this path exists")
+    #     log.warning(cwd)
     # start standalone pyblish qml
     forward([
         sys.executable, "-u"
     ] + args,
-        cwd=cwd
+        # cwd=cwd
     )
 
     return {"return_json_path": return_json_path}

@@ -74,7 +74,7 @@ class IntegrateHierarchyToAvalon(pyblish.api.ContextPlugin):
                 self.log.info('parent[data]: {}'.format(parent['data']))
                 if self.av_project['_id'] != parent['_id']:
                     visualParent = parent['_id']
-                    parents.extend(parent['data']['parents'])
+                    parents.extend(parent.get('data', {}).get('parents', []))
                     parents.append(parent['name'])
                 data['visualParent'] = visualParent
                 data['parents'] = parents
