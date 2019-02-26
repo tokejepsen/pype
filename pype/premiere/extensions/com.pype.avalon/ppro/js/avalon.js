@@ -128,16 +128,29 @@ function publish() {
       // create json for pyblish
       var jsonfile = require('jsonfile');
       var jsonRequestFile = stagingDir + '.json'
-      jsonfile.writeFile(jsonRequestFile, JSON.parse(result));
+      var jsonContent = JSON.parse(result);
+      jsonfile.writeFile(jsonRequestFile, jsonContent);
+      var checkingFile = function (path) {
+        var timeout = 1000;
+        setTimeout(function () {
+          if (fs.existsSync(path)) {
+            // version up project
+            // csi.evalScript('pype.versionUpWorkFile();');
 
-      // version up project
-      csi.evalScript('pype.versionUpWorkFile();');
+            var publish_path = window.ENV['PUBLISH_PATH'];
+            // register publish path
+            api.register_plugin_path(publish_path).then(displayResult);
+            // send json to pyblish
+            api.publish(jsonRequestFile, gui).then(displayResult);
 
-      var publish_path = window.ENV['PUBLISH_PATH'];
-      // register publish path
-      api.register_plugin_path(publish_path).then(displayResult);
-      // send json to pyblish
-      api.publish(jsonRequestFile, gui).then(displayResult);
+          } else {
+            displayResult('waiting');
+            checkingFile(path);
+          };
+        }, timeout)
+      };
+
+      checkingFile(jsonContent.waitingFor)
     });
   });
 }

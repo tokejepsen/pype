@@ -189,12 +189,19 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                     ext = repr['representation']
                 else:
                     continue
-
+                family = inst["family"]
                 # skip if thumnail in name of subset
                 if "thumbnail" in subset:
                     continue
+                elif "audio" in subset:
+                    family = subset
+                    subset_name = "{0}{1}".format(subset, "Main")
+                elif "reference" in subset:
+                    family ="render"
+                    subset_name = "{0}{1}".format(family, "Reference")
+                else:
+                    subset_name = "{0}{1}".format(subset, 'Default')
 
-                subset_name = "{0}{1}".format(subset, 'Default')
                 # create unique subset's name
                 name = "{0}_{1}_{2}".format(asset,
                                             inst["family"],
@@ -220,8 +227,8 @@ class CollectInstancesFromJson(pyblish.api.ContextPlugin):
                     "label": "{0} - {1}".format(
                         asset, subset_name),
                     "name": name,
-                    "family": inst["family"],
-                    "families": [subset, 'ftrack'],
+                    "family": family,
+                    "families": [subset, inst["family"], 'ftrack'],
                     "jsonData": inst,
                     "publish": True,
                     "version": version})

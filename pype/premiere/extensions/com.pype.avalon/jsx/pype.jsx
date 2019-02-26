@@ -14,7 +14,7 @@ if (ExternalObject.AdobeXMPScript === undefined) {
 pype = {
   setEnvs: function (env) {
     for (key in env) {
-      $.writeln((key + ': ' + env[key]));
+      // $.writeln((key + ': ' + env[key]));
       $.setenv(key, env[key])
     };
   },
@@ -539,6 +539,7 @@ pype = {
     return file;
   },
   encodeRepresentation: function (request) {
+    var waitFile = '';
     var sequence = app.project.activeSequence
     // get original timeline in out points
     var defaultTimelinePointValue = -400000
@@ -574,6 +575,10 @@ pype = {
             instances[i].metadata['ppro.clip.start'],
             instances[i].metadata['ppro.clip.end']
           ));
+          $.writeln(instances[i].files)
+          $.writeln(instances[i].files.length)
+          waitFile = request.stagingDir + '/' + instances[i].files[(instances[i].files.length - 1)];
+
         } else if (key === 'thumbnail') {
           instances[i].files.push(pype.exportThumbnail(
             instances[i].name,
@@ -586,9 +591,9 @@ pype = {
         } else if (key === 'projectfile') {
           instances[i].files.push(instances[i].projectfile);
         };
-
       }
     }
+    request.waitingFor = waitFile;
     // set back original in/out point on timeline
     app.project.activeSequence.setInPoint(origInPoint);
     app.project.activeSequence.setOutPoint(origOutPoint);

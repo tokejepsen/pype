@@ -9,7 +9,7 @@ class IntegrateAssumedDestination(pyblish.api.InstancePlugin):
 
     label = "Integrate Assumed Destination"
     order = pyblish.api.IntegratorOrder - 0.05
-    families = ["clip"]
+    families = ["clip",  "projectfile"]
 
     def process(self, instance):
 
@@ -73,6 +73,7 @@ class IntegrateAssumedDestination(pyblish.api.InstancePlugin):
 
         # get all the stuff from the database
         subset_name = instance.data["subset"]
+        self.log.info(subset_name)
         asset_name = instance.data["asset"]
         project_name = api.Session["AVALON_PROJECT"]
 
@@ -124,4 +125,5 @@ class IntegrateAssumedDestination(pyblish.api.InstancePlugin):
                          "representation": "TEMP"}
 
         instance.data["assumedTemplateData"] = template_data
+        self.log.info(template_data)
         instance.data["template"] = template

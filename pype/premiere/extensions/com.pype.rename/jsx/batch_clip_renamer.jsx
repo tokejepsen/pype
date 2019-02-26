@@ -1,4 +1,4 @@
-Number.prototype.pad = function (size) {
+﻿Number.prototype.pad = function (size) {
   var s = String(this);
   while (s.length < (size || 2)) {
     s = "0" + s;
@@ -49,34 +49,48 @@ getSelectedVideoTrackItems = function () {
 
 selected = getSelectedVideoTrackItems();
 
+var seq = app.project.activeSequence;
+var metadata = renamer.getSequencePypeMetadata(seq);
+
 var startCount = 10;
 var stepCount = 10;
-var padding = 4;
+var padding = 3;
 var newItems = {};
 var episode = 'lbb201';
+var episodeSuf = 'operationgrandpa';
 var shotPref = 'sh';
 var count = 0;
+var seqCheck = '';
+
 for (var c = 0; c < selected.length; c++) {
   // fill in hierarchy if set
   var parents = [];
   var hierarchy = [];
-
-  count = (c * stepCount) + startCount;
   var name = selected[c].name;
   var sequenceName = name.slice(0, 5)
-  var newName = episode + shotPref + (count).pad(padding);
+
+  if (sequenceName !== seqCheck) {
+    seqCheck = sequenceName;
+    count = 0;
+  };
+
+  var seqCount = (count * stepCount) + startCount;
+  count += 1;
+
+  var newName = episode + sequenceName + shotPref + (seqCount).pad(padding);
+  selected[c].clip.name = newName;
 
   parents.push({
     'entityType': 'episode',
-    'entityName': episode
+    'entityName': episode + '_' + episodeSuf
   });
-  hierarchy.push(episode);
+  hierarchy.push(episode + '_' + episodeSuf);
 
   parents.push({
     'entityType': 'sequence',
-    'entityName': sequenceName
+    'entityName': episode + sequenceName
   });
-  hierarchy.push(sequenceName);
+  hierarchy.push(episode + sequenceName);
 
   newItems[newName] = {
     'parents': parents,
@@ -84,5 +98,6 @@ for (var c = 0; c < selected.length; c++) {
   };
 };
 
-pype.dumpSequenceMetadata(app.project.activeSequence, newItems)
-$.writeln(JSON.stringify(newItems))
+metadata.clips = newItems
+renamer.setSequencePypeMetadata(seq, metadata);
+$.writeln(JSON.stringify(metadata))

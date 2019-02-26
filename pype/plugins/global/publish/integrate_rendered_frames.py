@@ -31,7 +31,9 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         if [ef for ef in self.exclude_families
-                if instance.data["family"] in ef]:
+                for f in instance.data["families"]
+                if f in ef]:
+            self.log.info('ignoring: {}'.format(instance))
             return
 
         families = [f for f in instance.data["families"]

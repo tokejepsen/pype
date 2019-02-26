@@ -9,11 +9,14 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
 
     label = "Collect Assumed Destination"
     order = pyblish.api.CollectorOrder + 0.499
-    exclude_families = ["clip"]
+    exclude_families = ["clip", 'projectfile']
 
     def process(self, instance):
+
         if [ef for ef in self.exclude_families
-                if instance.data["family"] in ef]:
+                for f in instance.data["families"]
+                if f in ef]:
+            self.log.info(instance)
             return
 
         self.create_destination_template(instance)
