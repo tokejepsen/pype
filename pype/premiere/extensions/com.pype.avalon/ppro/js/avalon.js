@@ -137,28 +137,36 @@ function publish() {
         var checkingFile = function (path) {
           var timeout = 1000;
           setTimeout(function () {
-            if (fs.existsSync(path)) {
-              // register publish path
-              api.register_plugin_path(publish_path).then(displayResult);
-              // send json to pyblish
-              api.publish(jsonRequestFile, gui).then(function (result) {
+              if (fs.existsSync(path)) {
+                // register publish path
+                api.register_plugin_path(publish_path).then(displayResult);
+                // send json to pyblish
+                api.publish(jsonRequestFile, gui).then(function (result) {
+                  // check if resulted path exists as file
+                  if (fs.existsSync(result.return_json_path)) {
+                    // read json data from resulted path
+                    displayResult('Updating metadata of clips after publishing');
 
-                if (fs.existsSync(result.return_json_path)) {
-                  // version up project
-                  // csi.evalScript('pype.versionUpWorkFile();');
-                  displayResult(result.return_json_path);
-                  displayResult('return path is not empty');
-                } else {
-                  displayResult('return path is empty');
-                };
+                    $.getJSON(result.return_json_path, function (json) {
+                      csi.evalScript('pype.dumpPublishedInstancesToMetadata(' + JSON.stringify(json) + ');');
+                    });
 
-              });
+                    // version up project
+                    displayResult('Saving new version of the project file');
+                    csi.evalScript('pype.versionUpWorkFile();');
+                  } else {
+                    // if resulted path file not existing
+                    displayResult('Publish has not been finished correctly. Hit Publish again to publish from already rendered data, or Reset to render all again.');
+                  };
 
-            } else {
-              displayResult('waiting');
-              checkingFile(path);
-            };
-          }, timeout)
+                });
+
+              } else {
+                displayResult('waiting');
+                checkingFile(path);
+              };
+            },
+            timeout)
         };
 
         checkingFile(jsonContent.waitingFor)
