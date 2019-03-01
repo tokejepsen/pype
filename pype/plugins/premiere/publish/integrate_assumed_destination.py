@@ -108,6 +108,9 @@ class IntegrateAssumedDestination(pyblish.api.InstancePlugin):
         if version is not None:
             version_number += version["name"]
 
+        if instance.data.get('version'):
+            version_number = int(instance.data.get('version'))
+
         hierarchy = asset['data']['parents']
         if hierarchy:
             # hierarchy = os.path.sep.join(hierarchy)

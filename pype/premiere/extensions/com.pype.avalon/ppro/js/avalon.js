@@ -99,60 +99,79 @@ function convertPathString(path) {
 function publish() {
   var $ = querySelector('#publish');
   var gui = $('input[name=gui]').checked;
+  var jsonPath = $('input[name=path]').value;
+  var publish_path = window.ENV['PUBLISH_PATH'];
 
-  // create temp staging directory on local
-  var stagingDir = convertPathString(getStagingDir());
+  if (jsonPath == '') {
+    // create temp staging directory on local
+    var stagingDir = convertPathString(getStagingDir());
 
-  // copy project file to stagingDir
-  const fs = require('fs-extra');
-  const path = require('path');
+    // copy project file to stagingDir
+    const fs = require('fs-extra');
+    const path = require('path');
 
-  csi.evalScript('pype.getProjectFileData();', function (result) {
-    displayResult(result);
-    var data = JSON.parse(result);
-    displayResult(stagingDir);
-    displayResult(data.projectfile);
-    var destination = convertPathString(path.join(stagingDir, data.projectfile));
-    displayResult('copy project file');
-    displayResult(data.projectfile);
-    displayResult(destination);
-    fs.copyFile(data.projectpath, destination);
-    displayResult('project file coppied!');
-  });
-
-  // publishing file
-  csi.evalScript('pype.getPyblishRequest("' + stagingDir + '");', function (r) {
-    var request = JSON.parse(r);
-    displayResult(r);
-    csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {
-      // create json for pyblish
-      var jsonfile = require('jsonfile');
-      var jsonRequestFile = stagingDir + '.json'
-      var jsonContent = JSON.parse(result);
-      jsonfile.writeFile(jsonRequestFile, jsonContent);
-      var checkingFile = function (path) {
-        var timeout = 1000;
-        setTimeout(function () {
-          if (fs.existsSync(path)) {
-            // version up project
-            // csi.evalScript('pype.versionUpWorkFile();');
-
-            var publish_path = window.ENV['PUBLISH_PATH'];
-            // register publish path
-            api.register_plugin_path(publish_path).then(displayResult);
-            // send json to pyblish
-            api.publish(jsonRequestFile, gui).then(displayResult);
-
-          } else {
-            displayResult('waiting');
-            checkingFile(path);
-          };
-        }, timeout)
-      };
-
-      checkingFile(jsonContent.waitingFor)
+    csi.evalScript('pype.getProjectFileData();', function (result) {
+      displayResult(result);
+      var data = JSON.parse(result);
+      displayResult(stagingDir);
+      displayResult(data.projectfile);
+      var destination = convertPathString(path.join(stagingDir, data.projectfile));
+      displayResult('copy project file');
+      displayResult(data.projectfile);
+      displayResult(destination);
+      fs.copyFile(data.projectpath, destination);
+      displayResult('project file coppied!');
     });
-  });
+
+    // publishing file
+    csi.evalScript('pype.getPyblishRequest("' + stagingDir + '");', function (r) {
+      var request = JSON.parse(r);
+      displayResult(r);
+      csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {
+        // create json for pyblish
+        var jsonfile = require('jsonfile');
+        var jsonRequestFile = stagingDir + '.json'
+        $('input[name=path]').value = jsonRequestFile;
+        var jsonContent = JSON.parse(result);
+        jsonfile.writeFile(jsonRequestFile, jsonContent);
+        var checkingFile = function (path) {
+          var timeout = 1000;
+          setTimeout(function () {
+            if (fs.existsSync(path)) {
+              // register publish path
+              api.register_plugin_path(publish_path).then(displayResult);
+              // send json to pyblish
+              api.publish(jsonRequestFile, gui).then(function (result) {
+
+                if (fs.existsSync(result.return_json_path)) {
+                  // version up project
+                  // csi.evalScript('pype.versionUpWorkFile();');
+                  displayResult(result.return_json_path);
+                  displayResult('return path is not empty');
+                } else {
+                  displayResult('return path is empty');
+                };
+
+              });
+
+            } else {
+              displayResult('waiting');
+              checkingFile(path);
+            };
+          }, timeout)
+        };
+
+        checkingFile(jsonContent.waitingFor)
+      });
+    });
+  } else {
+
+    // register publish path
+    api.register_plugin_path(publish_path).then(displayResult);
+    // send json to pyblish
+    api.publish(jsonPath, gui).then(displayResult);
+  };
+
 }
 
 function context() {
@@ -187,6 +206,11 @@ $('#btn-deregister').click(function () {
 
 $('#btn-publish').click(function () {
   publish();
+});
+
+$('#btn-reset').click(function () {
+  var $ = querySelector('#publish');
+  $('input[name=path]').value = '';
 });
 
 $('#btn-get-active-sequence').click(function () {
