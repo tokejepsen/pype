@@ -31,6 +31,7 @@ class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
     optional = False
 
     def process(self, context):
+        self.context = context
         if "hierarchyContext" not in context.data:
             return
 
@@ -77,13 +78,19 @@ class IntegrateHierarchyToFtrack(pyblish.api.ContextPlugin):
                     type=entity_type,
                     parent=parent
                 )
+            # self.log.info('entity: {}'.format(dict(entity)))
             # CUSTOM ATTRIBUTES
             custom_attributes = entity_data.get('custom_attributes', [])
+            instances = [
+                i for i in self.context.data["instances"] if i.data['asset'] in entity['name']]
             for key in custom_attributes:
                 assert (key in entity['custom_attributes']), (
                     'Missing custom attribute')
 
                 entity['custom_attributes'][key] = custom_attributes[key]
+                for instance in instances:
+                    instance.data['ftrackShotId'] = entity['id']
+
                 self.session.commit()
 
             # TASKS

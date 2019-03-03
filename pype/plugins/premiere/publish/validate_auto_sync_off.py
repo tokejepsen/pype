@@ -3,7 +3,7 @@ import pype.api
 import avalon.api
 
 
-class ValidateAutoSyncOff(pyblish.api.InstancePlugin):
+class ValidateAutoSyncOff(pyblish.api.ContextPlugin):
     """Ensure that autosync value in ftrack project is set to False.
 
     In case was set to True and event server with the sync to avalon event
@@ -16,12 +16,12 @@ class ValidateAutoSyncOff(pyblish.api.InstancePlugin):
     label = 'Ftrack project\'s auto sync off'
     actions = [pype.api.RepairAction]
 
-    def process(self, instance):
-        session = instance.context.data["ftrackSession"]
+    def process(self, context):
+        session = context.data["ftrackSession"]
         project_name = avalon.api.Session["AVALON_PROJECT"]
         query = 'Project where full_name is "{}"'.format(project_name)
         project = session.query(query).one()
-        invalid = self.get_invalid(instance)
+        invalid = self.get_invalid(context)
 
         assert not invalid, (
             "Ftrack Project has 'Auto sync' set to On."
@@ -29,8 +29,8 @@ class ValidateAutoSyncOff(pyblish.api.InstancePlugin):
         )
 
     @staticmethod
-    def get_invalid(instance):
-        session = instance.context.data["ftrackSession"]
+    def get_invalid(context):
+        session = context.data["ftrackSession"]
         project_name = avalon.api.Session["AVALON_PROJECT"]
         query = 'Project where full_name is "{}"'.format(project_name)
         project = session.query(query).one()
@@ -44,8 +44,8 @@ class ValidateAutoSyncOff(pyblish.api.InstancePlugin):
         return invalid
 
     @classmethod
-    def repair(cls, instance):
-        session = instance.context.data["ftrackSession"]
-        invalid = cls.get_invalid(instance)
+    def repair(cls, context):
+        session = context.data["ftrackSession"]
+        invalid = cls.get_invalid(context)
         invalid['custom_attributes']['avalon_auto_sync'] = False
         session.commit()

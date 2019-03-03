@@ -99,6 +99,7 @@ function convertPathString(path) {
 function publish() {
   var $ = querySelector('#publish');
   var gui = $('input[name=gui]').checked;
+  var versionUp = $('input[name=version-up]').checked;
   var jsonPath = $('input[name=path]').value;
   var publish_path = window.ENV['PUBLISH_PATH'];
 
@@ -147,13 +148,15 @@ function publish() {
                     // read json data from resulted path
                     displayResult('Updating metadata of clips after publishing');
 
-                    $.getJSON(result.return_json_path, function (json) {
+                    jsonfile.readFile(result.return_json_path, function (err, json) {
                       csi.evalScript('pype.dumpPublishedInstancesToMetadata(' + JSON.stringify(json) + ');');
-                    });
+                    })
 
                     // version up project
-                    displayResult('Saving new version of the project file');
-                    csi.evalScript('pype.versionUpWorkFile();');
+                    if (versionUp) {
+                      displayResult('Saving new version of the project file');
+                      csi.evalScript('pype.versionUpWorkFile();');
+                    };
                   } else {
                     // if resulted path file not existing
                     displayResult('Publish has not been finished correctly. Hit Publish again to publish from already rendered data, or Reset to render all again.');
@@ -238,6 +241,15 @@ $('#btn-get-projectitems').click(function () {
   evalScript('pype.getProjectItems();');
 });
 
+$('#btn-metadata').click(function () {
+  var path = 'C:/Users/pype/AppData/Local/Temp/pype_aport_llkpwbe2/return_data.json'
+  var jsonfile = require('jsonfile')
+  jsonfile.readFile(path, function (err, json) {
+    csi.evalScript('pype.dumpPublishedInstancesToMetadata(' + JSON.stringify(json) + ');');
+  })
+
+
+});
 $('#btn-get-frame').click(function () {
   evalScript('$._PPP_.exportCurrentFrameAsPNG();');
 });

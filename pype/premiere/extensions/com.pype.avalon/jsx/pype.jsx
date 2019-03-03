@@ -338,15 +338,14 @@ pype = {
     var instances = resultedPyblishJsonData.instances;
     var pypeData = pype.loadSequenceMetadata(app.project.activeSequence);
     for (var i = 0; i < instances.length; i++) {
+      $.writeln(instances[i].label)
       // process instances
       // check if asset in metadata
       // add it to sequence metadata
       if (instances[i].family !== "projectfile") {
         var data = {};
-        data.asset = instances[i].asset;
         data.family = instances[i].family;
-        data.subset = instances[i].subset;
-        data.hierarchy = instances[i].hierarchy;
+        data.ftrackShotId = instances[i].ftrackShotId;
         data.template = instances[i].template;
         data.version = instances[i].version;
         data.ftrackTaskID = instances[i].ftrackTask.substring(6, (instances[i].ftrackTask.length - 2));
@@ -366,10 +365,17 @@ pype = {
           };
         };
         // add all created publishe data into sequence metadata object
-        pypeData.clips[data.asset].published = data;
-      };
+        var subsetData = {};
+        if (pypeData.clips[instances[i].asset].published === undefined) {
+          subsetData[instances[i].subset] = data;
+          pypeData.clips[instances[i].asset].published = subsetData;
+        } else {
+          pypeData.clips[instances[i].asset].published[instances[i].subset] = data;
+        };
 
+      };
     };
+
     //dumping all data back to sequence metadata
     pype.dumpSequenceMetadata(app.project.activeSequence, pypeData)
   },

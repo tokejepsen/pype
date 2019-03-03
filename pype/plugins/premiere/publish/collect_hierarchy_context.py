@@ -33,9 +33,15 @@ class CollectHierarchyContext(pyblish.api.ContextPlugin):
             name = instance['name']
             # suppose that all instances are Shots
             in_info['entity_type'] = 'Shot'
-            # TODO: get custom attributes
-            in_info['custom_attributes'] = {}
-            # TODO: get tasks
+
+            instance_pyblish = [
+                i for i in context.data["instances"] if i.data['asset'] in name][0]
+            in_info['custom_attributes'] = {
+                'fend': instance_pyblish.data['endFrame'],
+                'fstart': instance_pyblish.data['startFrame'],
+                'fps': instance_pyblish.data['fps']
+            }
+
             in_info['tasks'] = instance['tasks']
 
             parents = instance.get('parents', [])
