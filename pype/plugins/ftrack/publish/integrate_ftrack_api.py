@@ -1,5 +1,5 @@
 import os
-
+import sys
 import pyblish.api
 import clique
 
@@ -26,6 +26,7 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
             str: String query to use with "session.query"
         """
         queries = []
+<<<<<<< HEAD
         for key, value in data.items():
             if not isinstance(value, (str, int)):
                 self.log.info(value)
@@ -35,6 +36,28 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
                     )
             else:
                 queries.append("{0} is \"{1}\"".format(key, value))
+=======
+        if sys.version_info[0] < 3:
+            for key, value in data.iteritems():
+                if not isinstance(value, (basestring, int)):
+                    self.log.info(value)
+                    if "id" in value.keys():
+                        queries.append(
+                            "{0}.id is \"{1}\"".format(key, value["id"])
+                        )
+                else:
+                    queries.append("{0} is \"{1}\"".format(key, value))
+        else:
+            for key, value in data.items():
+                if not isinstance(value, (str, int)):
+                    self.log.info(value)
+                    if "id" in value.keys():
+                        queries.append(
+                            "{0}.id is \"{1}\"".format(key, value["id"])
+                        )
+                else:
+                    queries.append("{0} is \"{1}\"".format(key, value))
+>>>>>>> develop
 
         query = (
             "select id from " + entitytype + " where " + " and ".join(queries)
