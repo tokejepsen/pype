@@ -19,8 +19,14 @@ class ExtractJpegEXR(pyblish.api.InstancePlugin):
     order = pyblish.api.ExtractorOrder
     families = ["imagesequence", "render", "write", "source"]
     host = ["shell"]
+    exclude_families = ["clip"]
 
     def process(self, instance):
+        if [ef for ef in self.exclude_families
+                for f in instance.data["families"]
+                if f in ef]:
+            self.log.info('ignoring: {}'.format(instance))
+            return
         start = instance.data.get("startFrame")
         stagingdir = os.path.normpath(instance.data.get("stagingDir"))
 

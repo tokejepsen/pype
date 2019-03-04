@@ -53,13 +53,14 @@ def publish(send_json_path, get_json_path, gui):
     """
 
     log.info("avalon.session is: \n{}".format(SESSION))
+    log.info("PUBLISH_PATH: \n{}".format(os.environ["PUBLISH_PATH"]))
 
     pype_start = os.path.join(os.getenv('PYPE_SETUP_ROOT'),
                               "app", "pype-start.py")
 
     publish = "--publish-gui" if gui else "--publish"
 
-    args = [pype_start, publish,
+    args = [pype_start, "--publish-gui",
             "-pp", os.environ["PUBLISH_PATH"],
             "-d", "rqst_json_data_path", send_json_path,
             "-d", "post_json_data_path", get_json_path
@@ -116,8 +117,8 @@ def deregister_plugin_path():
         aport_plugin_path = os.pathsep.join(
             [p.replace("\\", "/")
              for p in os.environ["PUBLISH_PATH"].split(os.pathsep)
-             if "aport" in p or
-             "ftrack" in p])
+             if "aport" in p
+             or "ftrack" in p])
         os.environ["PUBLISH_PATH"] = aport_plugin_path
     else:
         log.warning("deregister_plugin_path(): No PUBLISH_PATH is registred")
@@ -130,8 +131,8 @@ def register_plugin_path(publish_path):
     deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
-            os.environ["PUBLISH_PATH"].split(os.pathsep)
-            + [publish_path.replace("\\", "/")]
+            os.environ["PUBLISH_PATH"].split(os.pathsep) +
+            [publish_path.replace("\\", "/")]
         )
     else:
         os.environ["PUBLISH_PATH"] = publish_path

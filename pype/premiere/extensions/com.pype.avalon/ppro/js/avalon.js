@@ -133,12 +133,12 @@ function publish() {
       csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {
         // create json for pyblish
         var jsonfile = require('jsonfile');
-        var jsonSendFile = stagingDir + '_send.json'
-        var jsonGetFile = stagingDir + '_get.json'
-        $('input[name=send-path]').value = jsonSendFile;
-        $('input[name=get-path]').value = jsonGetFile;
+        var jsonSendPath = stagingDir + '_send.json'
+        var jsonGetPath = stagingDir + '_get.json'
+        $('input[name=send-path]').value = jsonSendPath;
+        $('input[name=get-path]').value = jsonGetPath;
         var jsonContent = JSON.parse(result);
-        jsonfile.writeFile(jsonSendFile, jsonContent);
+        jsonfile.writeFile(jsonSendPath, jsonContent);
         var checkingFile = function (path) {
           var timeout = 1000;
           setTimeout(function () {
@@ -146,7 +146,7 @@ function publish() {
                 // register publish path
                 api.register_plugin_path(publish_path).then(displayResult);
                 // send json to pyblish
-                api.publish(jsonSendFile, jsonGetFile, gui).then(function (result) {
+                api.publish(jsonSendPath, jsonGetPath, gui).then(function (result) {
                   // check if resulted path exists as file
                   if (fs.existsSync(result.get_json_path)) {
                     // read json data from resulted path
@@ -183,10 +183,30 @@ function publish() {
     // register publish path
     api.register_plugin_path(publish_path).then(displayResult);
     // send json to pyblish
-    api.publish(jsonSendPath, gui).then(displayResult);
+    api.publish(jsonSendPath, jsonGetPath, gui).then(function (result) {
+      // check if resulted path exists as file
+      if (fs.existsSync(result.get_json_path)) {
+        // read json data from resulted path
+        displayResult('Updating metadata of clips after publishing');
+
+        jsonfile.readFile(result.get_json_path, function (err, json) {
+          csi.evalScript('pype.dumpPublishedInstancesToMetadata(' + JSON.stringify(json) + ');');
+        })
+
+        // version up project
+        if (versionUp) {
+          displayResult('Saving new version of the project file');
+          csi.evalScript('pype.versionUpWorkFile();');
+        };
+      } else {
+        // if resulted path file not existing
+        displayResult('Publish has not been finished correctly. Hit Publish again to publish from already rendered data, or Reset to render all again.');
+      };
+
+    });
   };
-  $('input[name=send-path]').value = '';
-  $('input[name=get-path]').value = '';
+  // $('input[name=send-path]').value = '';
+  // $('input[name=get-path]').value = '';
 }
 
 function context() {
@@ -249,10 +269,13 @@ $('#btn-get-projectitems').click(function () {
 });
 
 $('#btn-metadata').click(function () {
-  var path = 'C:/Users/pype/AppData/Local/Temp/pype_aport_llkpwbe2/return_data.json'
-  var jsonfile = require('jsonfile')
+  var $ = querySelector('#publish');
+  var path = $('input[name=get-path]').value;
+  var jsonfile = require('jsonfile');
+  displayResult(path);
   jsonfile.readFile(path, function (err, json) {
     csi.evalScript('pype.dumpPublishedInstancesToMetadata(' + JSON.stringify(json) + ');');
+    displayResult('Metadata of clips after publishing were updated');
   })
 
 

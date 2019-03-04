@@ -23,9 +23,10 @@ class CollectFrameranges(pyblish.api.InstancePlugin):
         sec_start = metadata['ppro.clip.start']
         sec_end = metadata['ppro.clip.end']
         fstart = instance.data.get('fstart')
-        fend = fstart + int((sec_end - sec_start) * fps)
+        fend = fstart + (sec_end * fps) - (sec_start * fps) - 1
 
-        self.log.debug("fps: {}\nsec_start: {}\nsec_end: {}\nfstart: {}\nfend: {}\n".format(
+        self.log.debug("instance: {}, fps: {}\nsec_start: {}\nsec_end: {}\nfstart: {}\nfend: {}\n".format(
+            instance.data['name'],
             fps, sec_start, sec_end, fstart, fend))
 
         instance.data['startFrame'] = fstart
