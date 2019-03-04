@@ -98,12 +98,14 @@ function convertPathString(path) {
 
 function publish() {
   var $ = querySelector('#publish');
-  var gui = $('input[name=gui]').checked;
+  // var gui = $('input[name=gui]').checked;
+  var gui = true;
   var versionUp = $('input[name=version-up]').checked;
-  var jsonPath = $('input[name=path]').value;
+  var jsonSendPath = $('input[name=send-path]').value;
+  var jsonGetPath = $('input[name=get-path]').value;
   var publish_path = window.ENV['PUBLISH_PATH'];
 
-  if (jsonPath == '') {
+  if (jsonSendPath == '') {
     // create temp staging directory on local
     var stagingDir = convertPathString(getStagingDir());
 
@@ -131,10 +133,12 @@ function publish() {
       csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {
         // create json for pyblish
         var jsonfile = require('jsonfile');
-        var jsonRequestFile = stagingDir + '.json'
-        $('input[name=path]').value = jsonRequestFile;
+        var jsonSendFile = stagingDir + '_send.json'
+        var jsonGetFile = stagingDir + '_get.json'
+        $('input[name=send-path]').value = jsonSendFile;
+        $('input[name=get-path]').value = jsonGetFile;
         var jsonContent = JSON.parse(result);
-        jsonfile.writeFile(jsonRequestFile, jsonContent);
+        jsonfile.writeFile(jsonSendFile, jsonContent);
         var checkingFile = function (path) {
           var timeout = 1000;
           setTimeout(function () {
@@ -142,13 +146,13 @@ function publish() {
                 // register publish path
                 api.register_plugin_path(publish_path).then(displayResult);
                 // send json to pyblish
-                api.publish(jsonRequestFile, gui).then(function (result) {
+                api.publish(jsonSendFile, jsonGetFile, gui).then(function (result) {
                   // check if resulted path exists as file
-                  if (fs.existsSync(result.return_json_path)) {
+                  if (fs.existsSync(result.get_json_path)) {
                     // read json data from resulted path
                     displayResult('Updating metadata of clips after publishing');
 
-                    jsonfile.readFile(result.return_json_path, function (err, json) {
+                    jsonfile.readFile(result.get_json_path, function (err, json) {
                       csi.evalScript('pype.dumpPublishedInstancesToMetadata(' + JSON.stringify(json) + ');');
                     })
 
@@ -176,13 +180,13 @@ function publish() {
       });
     });
   } else {
-
     // register publish path
     api.register_plugin_path(publish_path).then(displayResult);
     // send json to pyblish
-    api.publish(jsonPath, gui).then(displayResult);
+    api.publish(jsonSendPath, gui).then(displayResult);
   };
-
+  $('input[name=send-path]').value = '';
+  $('input[name=get-path]').value = '';
 }
 
 function context() {
@@ -219,11 +223,14 @@ $('#btn-publish').click(function () {
   publish();
 });
 
-$('#btn-reset').click(function () {
+$('#btn-send-reset').click(function () {
   var $ = querySelector('#publish');
-  $('input[name=path]').value = '';
+  $('input[name=send-path]').value = '';
 });
-
+$('#btn-get-reset').click(function () {
+  var $ = querySelector('#publish');
+  $('input[name=get-path]').value = '';
+});
 $('#btn-get-active-sequence').click(function () {
   evalScript('pype.getActiveSequence();');
 });

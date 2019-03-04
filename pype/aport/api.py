@@ -28,8 +28,9 @@ SESSION = avalon.session
 
 log.warning(os.getenv('AVALON_WORKDIR').replace("\\", "/"))
 
+
 @pico.expose()
-def publish(json_data_path, gui):
+def publish(send_json_path, get_json_path, gui):
     """
     Runs standalone pyblish and adds link to
     data in external json file
@@ -38,22 +39,18 @@ def publish(json_data_path, gui):
     host is needed
 
     Args:
-        json_data_path (string): path to temp json file with
-                                context data
-        staging_dir (strign, optional): path to temp directory
+        send_json_path (string): path to temp json file with
+                                sending context data
+        get_json_path (strign): path to temp json file with
+                                returning context data
 
     Returns:
-        dict: return_json_path
+        dict: get_json_path
 
     Raises:
         Exception: description
 
     """
-
-    staging_dir = tempfile.mkdtemp(prefix="pype_aport_").replace("\\", "/")
-    log.info("staging_dir: {}".format(staging_dir))
-    return_json_path = os.path.join(
-        staging_dir, "return_data.json").replace("\\", "/")
 
     log.info("avalon.session is: \n{}".format(SESSION))
 
@@ -64,8 +61,8 @@ def publish(json_data_path, gui):
 
     args = [pype_start, publish,
             "-pp", os.environ["PUBLISH_PATH"],
-            "-d", "rqst_json_data_path", json_data_path,
-            "-d", "post_json_data_path", return_json_path
+            "-d", "rqst_json_data_path", send_json_path,
+            "-d", "post_json_data_path", get_json_path
             ]
 
     log.debug(args)
@@ -80,7 +77,7 @@ def publish(json_data_path, gui):
         # cwd=cwd
     )
 
-    return {"return_json_path": return_json_path}
+    return {"get_json_path": get_json_path}
 
 
 @pico.expose()
@@ -119,8 +116,8 @@ def deregister_plugin_path():
         aport_plugin_path = os.pathsep.join(
             [p.replace("\\", "/")
              for p in os.environ["PUBLISH_PATH"].split(os.pathsep)
-             if "aport" in p
-             or "ftrack" in p])
+             if "aport" in p or
+             "ftrack" in p])
         os.environ["PUBLISH_PATH"] = aport_plugin_path
     else:
         log.warning("deregister_plugin_path(): No PUBLISH_PATH is registred")
@@ -133,8 +130,8 @@ def register_plugin_path(publish_path):
     deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
-            os.environ["PUBLISH_PATH"].split(os.pathsep) +
-            [publish_path.replace("\\", "/")]
+            os.environ["PUBLISH_PATH"].split(os.pathsep)
+            + [publish_path.replace("\\", "/")]
         )
     else:
         os.environ["PUBLISH_PATH"] = publish_path

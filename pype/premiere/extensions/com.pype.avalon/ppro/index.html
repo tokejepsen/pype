@@ -2,93 +2,114 @@
 <html>
 
 <html lang="en">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Pype extention</title>
-    <!-- Load the pico Javascript client, always automatically available at /pico.js -->
-    <script src="/pico.js"></script>
-    <!-- Or load our module proxy -->
-    <script src="/api.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Pype extention</title>
+<!-- Load the pico Javascript client, always automatically available at /pico.js -->
+<script src="/pico.js"></script>
+<!-- Or load our module proxy -->
+<script src="/api.js"></script>
 
-    <link href="./css/bootstrap.min.css" type="text/css" rel="stylesheet">
-    <link href="./css/avalon.min.css" type="text/css" rel="stylesheet">
+<link href="./css/bootstrap.min.css" type="text/css" rel="stylesheet">
+<link href="./css/avalon.min.css" type="text/css" rel="stylesheet">
 
 
-    <script>
-        if (typeof module === 'object') {
+<script>
+    if (typeof module === 'object') {
             window.module = module;
             module = undefined;
         }
     </script>
 
-    <script src="./js/vendor/jquery-3.3.1.min.js"></script>
-    <script src="./js/vendor/CSInterface-8.js"></script>
-    <script src="./js/vendor/popper.min.js"></script>
-    <script src="./js/vendor/bootstrap.min.js"></script>
+<script src="./js/vendor/jquery-3.3.1.min.js"></script>
+<script src="./js/vendor/CSInterface-8.js"></script>
+<script src="./js/vendor/popper.min.js"></script>
+<script src="./js/vendor/bootstrap.min.js"></script>
 
-    <script>
-        if (window.module) module = window.module;
+<script>
+    if (window.module) module = window.module;
         var ENV;
     </script>
 </head>
 
 <body>
 
-<div id="section"><a href="javascript:history.go(0)">Refresh panel</a>
-  <ul class="list-group list-group-flush dark">
-      <li class="list-group-item" id="publish">
-        <h5>Publish</h5>
-        <pre><code class="js"></code></pre>
-        <div class="input-group input-group-sm mb-3">
+    <div id="section"><a href="javascript:history.go(0)">Refresh panel</a>
+        <ul class="list-group list-group-flush dark">
+            <li class="list-group-item" id="publish">
+                <h5>Publish</h5>
+                <pre><code class="js"></code></pre>
+                <div class="input-group input-group-lg mb-4">
 
-          <div class="input-group-prepend">
+                    <!-- <div class="input-group-prepend">
 
-              <span class="input-group-text" id="basic-addon6">GUI</span>
-              <div class="input-group-text">
-                <input type="checkbox" name="gui" checked="checked" aria-label="Checkbox for following text input">
-              </div>
-          </div>
-          <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon6">GUI</span>
+                        <div class="input-group-text">
+                            <input type="checkbox" name="gui" checked="checked" aria-label="Checkbox for following text input">
+                        </div>
+                    </div> -->
+                    <div class="input-group-prepend">
 
-              <span class="input-group-text" id="basic-addon6">Version Up</span>
-              <div class="input-group-text">
-                <input type="checkbox" name="version-up" checked="checked" aria-label="Checkbox for following text input">
-              </div>
-          </div>
-          <div class="input-group-append">
+                        <span class="input-group-text" id="basic-addon6">Version Up</span>
+                        <div class="input-group-text">
+                            <input type="checkbox" name="version-up" checked="checked" aria-label="Checkbox for following text input">
+                        </div>
+                    </div>
+                    <div class="input-group-append">
 
-            <button id="btn-publish" type="button" class="btn btn-info btn-sm btn-block">Publish</button>
-          </div>
+                        <button id="btn-publish" type="button" class="btn btn-info btn-sm btn-block">Publish</button>
+                    </div>
+                </div>
+                <div class="input-group input-group-sm mb-1">
 
-        </div>
-        <p>
-            fill this input if you know the json file path
-        </p>
-        <div class="input-group-append">
-          <input type="text" class="form-control" name="path" placeholder="Path" aria-label="Path" aria-describedby="basic-addon5" value="">
-          <button id="btn-reset" type="button" class="btn btn-info btn-sm btn-block">Reset</button>
-        </div>
-      </li>
-      <li class="list-group-item"><button type="button" class="btn btn-info btn-sm btn-block" id="btn-newWorkfileVersion">Save next workfile version</button></li>
-      <li class="list-group-item"><button type="button" class="btn btn-info btn-sm btn-block" id="btn-get-frame">Get screen grab</button></li>
-      <li class="list-group-item"><button type="button" class="btn btn-info btn-sm btn-block" id="btn-metadata">metadata</button></li>
+                    <div class="input-group-prepend">
 
-  </ul>
+                        <span class="input-group-text" id="basic-addon6">Path to sending data json</span>
+                        <div class="input-group-text">
+                            <input type="text" name="send-path" placeholder="Path" aria-label="Path" aria-describedby="basic-addon5" value="">
+                        </div>
+                    </div>
+                    <div class="input-group-append">
 
-  <hr />
+                        <button id="btn-send-reset" type="button" class="btn btn-info btn-sm btn-block">Reset</button>
+                    </div>
+                </div>
+                <div class="input-group input-group-sm mb-3">
 
-  <div class="col-md-6" id="source">
-                <!-- <pre>
+                    <div class="input-group-prepend">
+
+                        <span class="input-group-text" id="basic-addon6">Path to getting data json</span>
+
+                        <div class="input-group-text">
+                            <input type="text" name="get-path" placeholder="Path" aria-label="Path" aria-describedby="basic-addon5" value="">
+                        </div>
+
+                    </div>
+                    <div class="input-group-append">
+
+                        <button id="btn-get-reset" type="button" class="btn btn-info btn-sm btn-block">Reset</button>
+                    </div>
+                </div>
+
+            </li>
+            <li class="list-group-item"><button type="button" class="btn btn-info btn-sm btn-block" id="btn-newWorkfileVersion">Save next workfile version</button></li>
+            <li class="list-group-item"><button type="button" class="btn btn-info btn-sm btn-block" id="btn-get-frame">Get screen grab</button></li>
+        </ul>
+
+        <hr />
+
+        <div class="col-md-6" id="source">
+            <!-- <pre>
                 <code class="python"></code>
             </pre> -->
-  </div>
-  <h5>Output</h5>
-  <div class="row" id="output">
+        </div>
+        <h5>Output</h5>
+        <div class="row" id="output">
 
-  </div>
+        </div>
 
-  <script src="./js/pico_client.js"></script>
-  <script src="./js/avalon.js"></script>
+        <script src="./js/pico_client.js"></script>
+        <script src="./js/avalon.js"></script>
 </body>
 
 </html>
