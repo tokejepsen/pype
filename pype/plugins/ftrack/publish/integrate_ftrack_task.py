@@ -35,4 +35,6 @@ class IntegrateFtrackTask(pyblish.api.InstancePlugin):
         )
         result = session.query(query.format(project, task, asset)).one()
         self.log.info(result)
+
         instance.data["ftrackTask"] = result
+        instance.data["ftrackTaskId"] = result['id']

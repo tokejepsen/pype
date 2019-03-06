@@ -187,8 +187,15 @@ class CollectFileSequences(pyblish.api.ContextPlugin):
                 })
                 instance.append(collection)
 
+                if data.get('version'):
+                    instance.data["version"] = data['version']
+                    context.data["version"] = data['version']
+
                 if data.get('user'):
                     context.data["user"] = data['user']
+
+                if data.get('audio'):
+                    instance.data["audio"] = data['audio']
 
                 self.log.debug("Collected instance:\n"
                                "{}".format(pprint.pformat(instance.data)))

@@ -42,7 +42,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "workfile",
                 "scene",
                 "ass",
-                "render",
                 "projectfile",
                 "audio"]
     exclude_families = [

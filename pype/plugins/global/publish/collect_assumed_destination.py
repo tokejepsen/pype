@@ -80,11 +80,12 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
         # get all the stuff from the database
         subset_name = instance.data["subset"]
         asset_name = instance.data["asset"]
-        project_name = api.Session["AVALON_PROJECT"]
+        project_name = os.environ.get("AVALON_PROJECT")
 
         project = io.find_one({"type": "project",
                                "name": project_name},
                               projection={"config": True, "data": True})
+        self.log.info(project)
 
         template = project["config"]["template"]["publish"]
         # anatomy = instance.context.data['anatomy']

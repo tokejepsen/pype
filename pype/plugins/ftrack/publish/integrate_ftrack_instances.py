@@ -70,7 +70,7 @@ class IntegrateFtrackInstance(pyblish.api.InstancePlugin):
                     "metadata": {'ftr_meta': json.dumps({
                                  'frameIn': int(instance.data["startFrame"]),
                                  'frameOut': int(instance.data["endFrame"]),
-                                 'frameRate': instance.data['fps']})}
+                                 'frameRate': str(instance.data.get('fps', "25"))})}
                 }
             elif ext in [".jpg", ".jpeg"]:
                 component_data = {

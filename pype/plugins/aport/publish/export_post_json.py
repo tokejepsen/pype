@@ -1,6 +1,7 @@
 import clique
 import pyblish.api
 import json
+import os
 
 
 class ExtractJSON(pyblish.api.ContextPlugin):
@@ -43,6 +44,7 @@ class ExtractJSON(pyblish.api.ContextPlugin):
             instances_data.append(iData)
 
         data["instances"] = instances_data
+        data["env"] = dict(os.environ)
 
         with open(json_path, "w") as outfile:
             outfile.write(json.dumps(data, indent=4, sort_keys=True))

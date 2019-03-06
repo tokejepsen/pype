@@ -26,7 +26,8 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     families = ["imagesequence", "render", "write", "source"]
 
-    family_targets = [".frames", ".local", ".review", "imagesequence", "render", "source"]
+    family_targets = [".frames", ".local", ".review",
+                      "imagesequence", "render", "source"]
     exclude_families = ["clip"]
 
     def process(self, instance):
@@ -111,13 +112,14 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
 
         self.log.info("Verifying version from assumed destination")
 
-        assumed_data = instance.data["assumedTemplateData"]
-        assumed_version = assumed_data["version"]
-        if assumed_version != next_version:
-            raise AttributeError("Assumed version 'v{0:03d}' does not match"
-                                 "next version in database "
-                                 "('v{1:03d}')".format(assumed_version,
-                                                       next_version))
+        if not context.data.get('version'):
+            assumed_data = instance.data.get("assumedTemplateData")
+            assumed_version = assumed_data["version"]
+            if assumed_version != next_version:
+                raise AttributeError("Assumed version 'v{0:03d}' does not match"
+                                     "next version in database "
+                                     "('v{1:03d}')".format(assumed_version,
+                                                           next_version))
 
         if instance.data.get('version'):
             next_version = int(instance.data.get('version'))
@@ -194,7 +196,7 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
                     template_data["frame"] = src_collection.format(
                         "{padding}") % i
                     anatomy_filled = anatomy.format(template_data)
-                    test_dest_files.append(anatomy_filled.render.path)
+                    test_dest_files.append(anatomy_filled.render.sequencepath)
 
                 dst_collections, remainder = clique.assemble(test_dest_files)
                 dst_collection = dst_collections[0]
@@ -312,6 +314,9 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
             None
         """
 
+        if src == dst:
+            return
+
         dirname = os.path.dirname(dst)
         try:
             os.makedirs(dirname)
@@ -322,7 +327,7 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
                 self.log.critical("An unexpected error occurred.")
                 raise
 
-        shutil.copy(src, dst)
+        shutil.move(src, dst)
 
     def get_subset(self, asset, instance):
 

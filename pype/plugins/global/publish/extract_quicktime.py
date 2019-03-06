@@ -39,43 +39,49 @@ class ExtractQuicktimeEXR(pyblish.api.InstancePlugin):
         )
         self.log.info("input {}".format(full_input_path))
 
-        filename = collections[0].format('{head}')
-        if not filename.endswith('.'):
-            filename += "."
-        movFile = filename + "mov"
-        full_output_path = os.path.join(stagingdir, movFile)
-
-        self.log.info("output {}".format(full_output_path))
-
         config_data = instance.context.data['output_repre_config']
 
         proj_name = os.environ.get('AVALON_PROJECT', '__default__')
-        profile = config_data.get(proj_name, config_data['__default__'])
 
-        input_args = []
-        # overrides output file
-        input_args.append("-y")
-        # preset's input data
-        input_args.extend(profile.get('input', []))
-        # necessary input data
-        input_args.append("-i {}".format(full_input_path))
-        input_args.append("-framerate {}".format(fps))
-        input_args.append("-start_number {}".format(start))
+        for key in config_data:
 
-        output_args = []
-        # preset's output data
-        output_args.extend(profile.get('output', []))
-        # output filename
-        output_args.append(full_output_path)
-        mov_args = [
-            "ffmpeg",
-            " ".join(input_args),
-            " ".join(output_args)
-        ]
-        subprocess_mov = " ".join(mov_args)
-        sub_proc = subprocess.Popen(subprocess_mov)
-        sub_proc.wait()
+            profile = config_data.get(key)
 
-        if "files" not in instance.data:
-            instance.data["files"] = list()
-        instance.data["files"].append(movFile)
+            filename = collections[0].format('{head}')
+            if not filename.endswith('.'):
+                filename += "."
+            movFile = filename + key
+            full_output_path = os.path.join(stagingdir, movFile)
+            self.log.info("output {}".format(full_output_path))
+
+            input_args = []
+            # overrides output file
+            input_args.append("-y")
+            # preset's input data
+            input_args.extend(profile.get('input', []))
+            # necessary input data
+            input_args.append("-i {}".format(full_input_path))
+            if instance.data.get("audio"):
+                input_args.append(
+                    "-i {}".format(instance.data.get("audio")))
+            self.log.info("USING AUDIO {}".format(instance.data.get("audio")))
+            input_args.append("-framerate {}".format(fps))
+            input_args.append("-start_number {}".format(start))
+
+            output_args = []
+            # preset's output data
+            output_args.extend(profile.get('output', []))
+            # output filename
+            output_args.append(full_output_path)
+            mov_args = [
+                "ffmpeg",
+                " ".join(input_args),
+                " ".join(output_args)
+            ]
+            subprocess_mov = " ".join(mov_args)
+            sub_proc = subprocess.Popen(subprocess_mov)
+            sub_proc.wait()
+
+            if "files" not in instance.data:
+                instance.data["files"] = list()
+            instance.data["files"].append(movFile)
