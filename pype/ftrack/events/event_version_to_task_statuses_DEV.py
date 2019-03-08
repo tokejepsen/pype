@@ -2,7 +2,7 @@ import ftrack_api
 from pype.ftrack import BaseEvent
 
 
-class VersionToTaskStatus(BaseEvent):
+class VersionToTaskStatusDEV(BaseEvent):
 
     def launch(self, session, entities, event):
         '''Propagates status from version to task when changed'''
@@ -25,8 +25,8 @@ class VersionToTaskStatus(BaseEvent):
                 # get project
                 base_proj = version['link'][0]
                 ft_project = session.get(base_proj['type'], base_proj['id'])
-                if ft_project['name'] != 'lbb2':
-                    self.log.info('>>> not a LBB project. SKIPPING')
+                if ft_project['name'] != 'lbb2_dev':
+                    self.log.info('>>> not a dev project. SKIPPING')
                     continue
 
                 try:
@@ -85,9 +85,8 @@ class VersionToTaskStatus(BaseEvent):
 
                     # Setting task status
                     try:
-                        if task['status'] is not task_status:
-                            task['status'] = task_status
-                            session.commit()
+                        task['status'] = task_status
+                        session.commit()
                     except Exception as e:
                         self.log.warning('!!! [ {} ] status couldnt be set:\
                             [ {} ]'.format(path, e))
@@ -101,5 +100,5 @@ def register(session, **kw):
     if not isinstance(session, ftrack_api.session.Session):
         return
 
-    event = VersionToTaskStatus(session)
+    event = VersionToTaskStatusDEV(session)
     event.register()
