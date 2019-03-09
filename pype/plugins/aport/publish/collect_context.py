@@ -6,6 +6,7 @@ from avalon import (
 )
 from pype import api as pype
 import json
+from pathlib import Path
 
 
 class CollectContextDataFromAport(pyblish.api.ContextPlugin):
@@ -26,26 +27,25 @@ class CollectContextDataFromAport(pyblish.api.ContextPlugin):
     def process(self, context):
 
         # get json paths from data
-        rqst_json_data_path = context.data['rqst_json_data_path']
-        post_json_data_path = context.data['post_json_data_path']
+        rqst_json_data_path = Path(context.data['rqst_json_data_path'])
+        post_json_data_path = Path(context.data['post_json_data_path'])
 
         # get avalon session data and convert \ to /
         session = avalon.session
-        fix_paths = {k: v.replace("\\", "/") for k, v in session.items()
-                     if isinstance(v, str)}
+        fix_paths = {k: Path(v).resolve() for k, v in session.items()
+                     if isinstance(v, str)
+                     if "/" in v
+                     if 'mongodb' not in v
+                     if 'http' not in v}
         session.update(fix_paths)
         context.data["avalonSession"] = session
+        self.log.debug("avalonSession: {}".format(session))
 
         # get stagin directory from recieved path to json
-        context.data["stagingDir"] = \
-            staging_dir = os.path.dirname(
-            post_json_data_path).replace("\\", "/")
-
-        if not os.path.exists(staging_dir):
-            os.makedirs(staging_dir)
+        context.data["stagingDir"] = staging_dir = post_json_data_path.parent
 
         # get data from json file recieved
-        with open(rqst_json_data_path) as f:
+        with rqst_json_data_path.open(mode='r') as f:
             context.data['jsonData'] = json_data = json.load(f)
         assert json_data, "No `data` in json file"
 
@@ -85,7 +85,7 @@ class CollectContextDataFromAport(pyblish.api.ContextPlugin):
         # get current file
         current_file = json_data.get("currentFile", None)
         assert current_file, "No `currentFile` data in json file"
-        context.data["currentFile"] = current_file
+        context.data["currentFile"] = Path(current_file).resolve()
 
         # get project data from avalon
         project_data = pype.get_project_data()

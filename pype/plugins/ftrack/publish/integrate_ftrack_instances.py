@@ -89,21 +89,22 @@ class IntegrateFtrackInstance(pyblish.api.InstancePlugin):
 
             self.log.debug('location {}'.format(location))
 
-            componentList.append({"assettype_data": {
-                "short": asset_type,
-            },
-                "asset_data": {
-                "name": instance.data["subset"],
-            },
-                "assetversion_data": {
-                "version": version_number,
-            },
-                "component_data": component_data,
-                "component_path": file,
-                'component_location': location,
-                "component_overwrite": False,
-                "thumbnail": thumbnail
-            }
+            componentList.append(
+                {"assettype_data": {
+                    "short": asset_type,
+                },
+                    "asset_data": {
+                    "name": instance.data["subset"],
+                },
+                    "assetversion_data": {
+                    "version": version_number,
+                },
+                    "component_data": component_data,
+                    "component_path": file,
+                    'component_location': location,
+                    "component_overwrite": False,
+                    "thumbnail": thumbnail
+                }
             )
 
         self.log.debug('componentsList: {}'.format(str(componentList)))

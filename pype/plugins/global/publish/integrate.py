@@ -5,7 +5,7 @@ import shutil
 import errno
 import pyblish.api
 from avalon import api, io
-
+from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -224,7 +224,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
                     src = os.path.join(stagingdir, fname)
                     anatomy_filled = anatomy.format(template_data)
-                    dst = anatomy_filled.publish.path
+                    dst = str(Path(anatomy_filled.publish.path).resolve())
 
                     instance.data["transfers"].append([src, dst])
                     template = anatomy.publish.path
@@ -248,7 +248,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
                 src = os.path.join(stagingdir, fname)
                 anatomy_filled = anatomy.format(template_data)
-                dst = anatomy_filled.publish.path
+                dst = str(Path(anatomy_filled.publish.path).resolve())
 
                 instance.data["transfers"].append([src, dst])
                 template = anatomy.publish.path
@@ -393,14 +393,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         except KeyError:
             source = context.data["currentFile"]
 
-            relative_path = os.path.relpath(source, api.registered_root())
-            source = os.path.join("{root}", relative_path).replace("\\", "/")
+            # relative_path = os.path.relpath(source, api.registered_root())
+            # source = os.path.join("{root}", relative_path).replace("\\", "/")
 
         self.log.debug("Source: {}".format(source))
         version_data = {"families": families,
                         "time": context.data["time"],
                         "author": context.data["user"],
-                        "source": source,
+                        "source": str(source),
                         "comment": context.data.get("comment"),
                         "machine": context.data.get("machine"),
                         "fps": context.data.get("fps")}
