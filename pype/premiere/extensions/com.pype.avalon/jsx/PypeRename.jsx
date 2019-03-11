@@ -271,6 +271,7 @@ renamer.setSequencePypeMetadata = function (sequence, data) { // eslint-disable-
   sequence.projectItem.setProjectMetadata(str, [pypeData]);
 
   // test
+
   var newMetadata = sequence.projectItem.getProjectMetadata();
   var newXMP = new XMPMeta(newMetadata);
   var found = newXMP.doesPropertyExist(kPProPrivateProjectMetadataURI, pypeData);

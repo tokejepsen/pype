@@ -225,7 +225,24 @@ function tc(timecode) {
   displayResult(timec);
 }
 
+function rename() {
+  var $ = querySelector('#rename');
+  var data = {};
+  data.ep = $('input[name=episode]').value;
+  data.epSuffix = $('input[name=ep_suffix]').value;
+
+  displayResult(JSON.stringify(data));
+
+  csi.evalScript('batchRenamer.renameTargetedTextLayer( ' + JSON.stringify(data) + ' )', function (result) {
+    displayResult(result);
+    csi.evalScript('pype.dumpSequenceMetadata(' + result + ')');
+  });
+}
+
 // bind buttons
+$('#btn-rename').click(function () {
+  rename();
+});
 
 $('#btn-set-context').click(function () {
   context();

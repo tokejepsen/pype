@@ -32,12 +32,12 @@ class CollectContextDataFromAport(pyblish.api.ContextPlugin):
 
         # get avalon session data and convert \ to /
         session = avalon.session
-        fix_paths = {k: Path(v).resolve() for k, v in session.items()
-                     if isinstance(v, str)
-                     if "/" in v
-                     if 'mongodb' not in v
-                     if 'http' not in v}
-        session.update(fix_paths)
+
+        projects = Path(session['AVALON_PROJECTS']).resolve()
+        wd = Path(session['AVALON_WORKDIR']).resolve()
+        session['AVALON_PROJECTS'] = str(projects)
+        session['AVALON_WORKDIR'] = str(wd)
+
         context.data["avalonSession"] = session
         self.log.debug("avalonSession: {}".format(session))
 

@@ -42,8 +42,8 @@ class NextTaskUpdate(BaseEvent):
 
         for entity in event['data'].get('entities', []):
 
-            if (entity['entityType'] == 'task' and
-                    'statusid' in entity['keys']):
+            if (entity['entityType'] == 'task'
+                    and 'statusid' in entity['keys']):
 
                 task = session.get('Task', entity['entityId'])
 
@@ -77,6 +77,7 @@ class NextTaskUpdate(BaseEvent):
                             ).format(path))
 
                 session.commit()
+
 
 def register(session, **kw):
     '''Register plugin. Called when used as an plugin.'''

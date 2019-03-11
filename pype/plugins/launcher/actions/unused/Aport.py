@@ -14,7 +14,7 @@ log = Logger.getLogger(__name__, "aport")
 
 class Aport(api.Action):
 
-    name = "aport"
+    name = "aport_0.1"
     label = "Aport - Avalon's Server"
     icon = "retweet"
     order = 996

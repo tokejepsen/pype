@@ -24,7 +24,8 @@ class CollectFtrackApi(pyblish.api.ContextPlugin):
         project = os.environ.get('AVALON_PROJECT', '')
         asset = os.environ.get('AVALON_ASSET', '')
         task = os.environ.get('AVALON_TASK', '')
-
+        self.log.info("project: {0}, asset: {1}, task: {2}".format(
+            project, asset, task))
         result = session.query('Task where\
             project.full_name is "{0}" and\
             name is "{1}" and\

@@ -260,6 +260,7 @@ def import_to_avalon(
 
             moved_back = False
             if 'visualParent' in avalon_asset['data']:
+                # if avalon_asset['data']['visualParent'] is None:
                 if silo is None:
                     asset_parent_id = avalon_asset['parent']
                 else:
@@ -268,6 +269,7 @@ def import_to_avalon(
                 asset_parent = database[project_name].find_one(
                     {'_id': ObjectId(asset_parent_id)}
                 )
+
                 ft_parent_id = asset_parent['data']['ftrackId']
                 try:
                     entity['parent_id'] = ft_parent_id
@@ -319,26 +321,26 @@ def get_avalon_attr(session):
 
 
 def changeability_check_childs(entity):
-        if (entity.entity_type.lower() != 'task' and 'children' not in entity):
-            return True
-        childs = entity['children']
-        for child in childs:
-            if child.entity_type.lower() == 'task':
-                config = get_config_data()
-                if 'sync_to_avalon' in config:
-                    config = config['sync_to_avalon']
-                if 'statuses_name_change' in config:
-                    available_statuses = config['statuses_name_change']
-                else:
-                    available_statuses = []
-                ent_status = child['status']['name'].lower()
-                if ent_status not in available_statuses:
-                    return False
-            # If not task go deeper
-            elif changeability_check_childs(child) is False:
-                return False
-        # If everything is allright
+    if (entity.entity_type.lower() != 'task' and 'children' not in entity):
         return True
+    childs = entity['children']
+    for child in childs:
+        if child.entity_type.lower() == 'task':
+            config = get_config_data()
+            if 'sync_to_avalon' in config:
+                config = config['sync_to_avalon']
+            if 'statuses_name_change' in config:
+                available_statuses = config['statuses_name_change']
+            else:
+                available_statuses = []
+            ent_status = child['status']['name'].lower()
+            if ent_status not in available_statuses:
+                return False
+        # If not task go deeper
+        elif changeability_check_childs(child) is False:
+            return False
+    # If everything is allright
+    return True
 
 
 def get_data(entity, session, custom_attributes):
@@ -395,7 +397,7 @@ def get_data(entity, session, custom_attributes):
     # Get list of parents without project
     parents = []
     folderStruct = []
-    for i in range(1, len(entity['link'])-1):
+    for i in range(1, len(entity['link']) - 1):
         parEnt = session.get(
             entity['link'][i]['type'],
             entity['link'][i]['id']

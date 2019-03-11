@@ -9,6 +9,7 @@ log = Logger.getLogger(__name__)
 
 
 def registerApp(app, session):
+    log.info('__application: {}'.format(app['name']))
     name = app['name']
     variant = ""
     try:

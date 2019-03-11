@@ -25,7 +25,7 @@ class TaskToVersionStatus(BaseEvent):
                 asset = session.query('Asset where parent.id is {0} and '
                                       'name is "renderAnimation"'.format(task['parent']['id'], )).first()
                 last_version = asset['versions'][-1]
-                self.log.info('>>> VERSIONS {}'.format(
+                self.log.info('>>> VERSION {}'.format(
                     asset['versions'][0]['version']))
 
                 # self.log.info('>>>  {}'.format(task['parent']))
@@ -34,7 +34,7 @@ class TaskToVersionStatus(BaseEvent):
                 base_proj = task['link'][0]
                 ft_project = session.get(base_proj['type'], base_proj['id'])
                 if ft_project['name'] != 'lbb2':
-                    self.log.info('>>> not a dev project. SKIPPING')
+                    self.log.info('>>> a dev project. SKIPPING')
                     continue
 
                 task_status = session.get(
@@ -49,7 +49,7 @@ class TaskToVersionStatus(BaseEvent):
 
                 if task_type in ['Animation']:
                     self.log.info(
-                        '>>> task status to set: [ {} ]'.format(task_status['name']))
+                        '>>> task STATUS to set: [ {} ]'.format(task_status['name']))
                     status_to_set = task_status
 
                 # if status_to_set is not None:
@@ -76,12 +76,13 @@ class TaskToVersionStatus(BaseEvent):
                         if last_version['status'] is not task_status:
                             last_version['status'] = task_status
                             session.commit()
+                            self.log.info('>>> [ {} / {} ] updated to [ {} ]'.format(
+                                path, last_version['version'], task_status['name']))
+                        else:
+                            self.log.info('>>> Status identical. not updating')
                     except Exception as e:
                         self.log.warning('!!! [ {} ] status couldnt be set:\
                             [ {} ]'.format(path, e))
-                    else:
-                        self.log.info('>>> [ {} ] updated to [ {} ]'.format(
-                            path, task_status['name']))
 
 
 def register(session, **kw):

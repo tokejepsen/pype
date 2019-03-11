@@ -172,20 +172,20 @@ class SyncToAvalon(BaseAction):
             message = str(ve)
             self.log.error('Error during syncToAvalon: {}'.format(message))
 
-        except Exception as e:
-            job['status'] = 'failed'
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            log_message = "{}/{}/Line: {}".format(
-                exc_type, fname, exc_tb.tb_lineno
-            )
-            self.log.error(
-                'Error during syncToAvalon: {}'.format(log_message)
-            )
-            message = (
-                'Unexpected Error'
-                ' - Please check Log for more information'
-            )
+        # except Exception as e:
+        #     job['status'] = 'failed'
+        #     exc_type, exc_obj, exc_tb = sys.exc_info()
+        #     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        #     log_message = "{}/{}/Line: {}".format(
+        #         exc_type, fname, exc_tb.tb_lineno
+        #     )
+        #     self.log.error(
+        #         'Error during syncToAvalon: {}'.format(log_message)
+        #     )
+        #     message = (
+        #         'Unexpected Error'
+        #         ' - Please check Log for more information'
+        #     )
         finally:
             if job['status'] in ['queued', 'running']:
                 job['status'] = 'failed'
@@ -240,6 +240,7 @@ def register(session, **kw):
                 SyncToAvalon.__name__
             )
         )
+
 
 def main(arguments=None):
     '''Set up logging and register action.'''

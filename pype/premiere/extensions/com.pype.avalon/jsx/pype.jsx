@@ -377,22 +377,30 @@ pype = {
     };
 
     //dumping all data back to sequence metadata
-    pype.dumpSequenceMetadata(app.project.activeSequence, pypeData)
+    pype.dumpSequenceMetadata(pypeData, app.project.activeSequence)
   },
-  dumpSequenceMetadata: function (sequence, data) {
+  dumpSequenceMetadata: function (data, sequence) {
+    if (sequence === undefined) {
+      var sequence = app.project.activeSequence;
+    };
     var kPProPrivateProjectMetadataURI = "http://ns.adobe.com/premierePrivateProjectMetaData/1.0/";
     var metadata = sequence.projectItem.getProjectMetadata();
     var pypeData = "pypeData"
     var xmp = new XMPMeta(metadata);
     app.project.addPropertyToProjectMetadataSchema(pypeData, "Pype Data", 2);
 
-    for (key in data) {
-      xmp.setProperty(kPProPrivateProjectMetadataURI, pypeData, JSON.stringify(data));
-    };
+
+    xmp.setProperty(kPProPrivateProjectMetadataURI, pypeData, JSON.stringify(data));
+    // $.writeln(JSON.stringify(data))
+
 
     var str = xmp.serialize();
+    $.writeln('________________________')
+    $.writeln(str)
     sequence.projectItem.setProjectMetadata(str, [pypeData]);
-
+    $.writeln('________________________')
+    JSON.stringify(data)
+    $.writeln('________________________')
   },
 
   loadSequenceMetadata: function (sequence) {

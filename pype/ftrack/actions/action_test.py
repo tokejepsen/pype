@@ -26,13 +26,15 @@ class TestAction(BaseAction):
     #: priority
     priority = 10000
 
-    def prediscover(self, session, entities, event):
+    def discover(self, session, entities, event):
         ''' Validation '''
 
         return True
 
     def launch(self, session, entities, event):
-        self.log.info(event)
+        io.Session['AVALON_PROJECT'] = 'LBB2'
+        io.install()
+        io.delete_many({"name": {'$regex': 'lbb202sc'}})
 
         return True
 

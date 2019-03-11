@@ -6,7 +6,7 @@ class VersionToTaskStatus(BaseEvent):
 
     def launch(self, session, entities, event):
         '''Propagates status from version to task when changed'''
-        session.commit()
+        # session.commit()
 
         # start of event procedure ----------------------------------
         for entity in event['data'].get('entities', []):
@@ -15,8 +15,8 @@ class VersionToTaskStatus(BaseEvent):
 
             # Filter non-assetversions
             if (
-                entity['entityType'] == 'assetversion' and
-                'statusid' in entity['keys']
+                entity['entityType'] == 'assetversion'
+                and 'statusid' in entity['keys']
             ):
 
                 version = session.get('AssetVersion', entity['entityId'])
@@ -88,12 +88,11 @@ class VersionToTaskStatus(BaseEvent):
                         if task['status'] is not task_status:
                             task['status'] = task_status
                             session.commit()
+                            self.log.info('>>> [ {} ] updated to [ {} ]'.format(
+                                path, task_status['name']))
                     except Exception as e:
                         self.log.warning('!!! [ {} ] status couldnt be set:\
                             [ {} ]'.format(path, e))
-                    else:
-                        self.log.info('>>> [ {} ] updated to [ {} ]'.format(
-                            path, task_status['name']))
 
 
 def register(session, **kw):

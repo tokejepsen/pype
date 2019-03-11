@@ -4,6 +4,7 @@ import pyblish.api
 class IntegrateWorkfileVersion(pyblish.api.InstancePlugin):
     """
     Will desynchronize versioning from actual version of work file
+
     """
 
     order = pyblish.api.IntegratorOrder - 0.15

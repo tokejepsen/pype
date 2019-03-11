@@ -42,7 +42,7 @@ INVENTORY_PATH = os.path.join(PLUGINS_DIR, "premiere", "inventory")
 
 def request_aport(url_path, data={}):
     try:
-        api.add_tool_to_environment(["aport"])
+        api.add_tool_to_environment(["aport_0.1"])
 
         ip = os.getenv("PICO_IP", None)
         if ip and ip.startswith('http'):
@@ -116,11 +116,14 @@ def install():
         "\nThe following publishing paths has been registered: " \
         "\n\n{}".format(
             reg_paths)
+    log.info("____message: {}".format(message))
     api.message(title="pyblish_paths", message=message, level="info")
-
+    log.info("____message: {}".format(message))
     # launching premiere
     exe = r"C:\Program Files\Adobe\Adobe Premiere Pro CC 2019\Adobe Premiere Pro.exe".replace(
         "\\", "/")
+
+    log.info("____path exists: {}".format(os.path.exists(exe)))
 
     launch(
         executable=exe,
