@@ -13,23 +13,28 @@ class DeleteAsset(BaseAction):
     #: Action identifier.
     identifier = 'delete.asset'
     #: Action label.
-    label = 'Delete asset/subsets'
+    label = 'Delete Asset/Subsets'
     #: Action description.
     description = 'Removes from Avalon with all childs and asset from Ftrack'
-    icon = "https://www.iconsdb.com/icons/preview/white/full-trash-xxl.png"
+    icon = (
+        'https://cdn4.iconfinder.com/data/icons/'
+        'ios-web-user-interface-multi-circle-flat-vol-5/512/'
+        'Delete_dustbin_empty_recycle_recycling_remove_trash-512.png'
+    )
+    #: roles that are allowed to register this action
+    role_list = ['Pypeclub', 'Administrator']
     #: Db
     db = DbConnector()
 
     value = None
 
-    def prediscover(self, event):
+    def discover(self, session, entities, event):
         ''' Validation '''
-        selection = event["data"].get("selection", None)
-        if selection is None or len(selection) > 1:
+        if len(entities) != 1:
             return False
 
         valid = ["task"]
-        entityType = selection[0].get("entityType", "")
+        entityType = event["data"]["selection"][0].get("entityType", "")
         if entityType.lower() not in valid:
             return False
 
@@ -171,7 +176,7 @@ class DeleteAsset(BaseAction):
                 )
             else:
                 title = title.format(
-                    '{} subset'.format(len_subsets)
+                    '{} subsets'.format(len_subsets)
                 )
 
         self.values = values
@@ -310,23 +315,7 @@ def register(session, **kw):
     if not isinstance(session, ftrack_api.session.Session):
         return
 
-    roleList = ['Pypeclub', 'Administrator']
-
-    username = session.api_user
-    user = session.query('User where username is "{}"'.format(username)).one()
-    available = False
-    for role in user['user_security_roles']:
-        if role['security_role']['name'] in roleList:
-            available = True
-            break
-    if available is True:
-        DeleteAsset(session).register()
-    else:
-        logging.info(
-            "!!! You're missing required permissions for action {}".format(
-                DeleteAsset.__name__
-            )
-        )
+    DeleteAsset(session).register()
 
 
 def main(arguments=None):

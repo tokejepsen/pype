@@ -205,7 +205,7 @@ class CollectLook(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.4
+    order = pyblish.api.CollectorOrder + 0.2
     families = ["look"]
     label = "Collect Look"
     hosts = ["maya"]
@@ -275,7 +275,7 @@ class CollectLook(pyblish.api.InstancePlugin):
         if looksets:
             for look in looksets:
                 for at in shaderAttrs:
-                    con = cmds.listConnections("{}.{}".format("aiStandard_SG", at))
+                    con = cmds.listConnections("{}.{}".format(look, at))
                     if con:
                         materials.extend(con)
 
