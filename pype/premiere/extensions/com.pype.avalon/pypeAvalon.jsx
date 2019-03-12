@@ -19,6 +19,10 @@ if (typeof (pype) == 'undefined') {
   var pype = {};
 }
 
+if (typeof (br) == 'undefined') {
+  var br = {};
+}
+
 function keepExtention() {
   return app.setExtensionPersistent("com.pype.avalon", 0);
 }

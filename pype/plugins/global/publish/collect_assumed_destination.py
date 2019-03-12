@@ -14,7 +14,7 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         if [ef for ef in self.exclude_families
-                for f in instance.data["families"]
+                for f in instance.data["family"]
                 if f in ef]:
             self.log.info(instance)
             return
