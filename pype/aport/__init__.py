@@ -59,7 +59,7 @@ def register_additional_plugin_paths():
 
 
 def install():
-    api.set_avalon_workdir()
+    # api.set_avalon_workdir()
 
     log.info("Registering Aport plug-ins..")
     pyblish.register_plugin_path(PUBLISH_PATH)
