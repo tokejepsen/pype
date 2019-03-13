@@ -16,7 +16,7 @@ class Test_Event(BaseEvent):
     def launch(self, session, entities, event):
         '''just a testing event'''
 
-        # self.log.info(event)
+        self.log.info(event['source']['user']['username'])
 
         return True
 
