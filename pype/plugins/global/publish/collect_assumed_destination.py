@@ -14,13 +14,13 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         if [ef for ef in self.exclude_families
-                for f in instance.data["families"]
-                if f in ef]:
+                if instance.data["family"] in ef]:
             self.log.info(instance)
             return
 
         self.create_destination_template(instance)
 
+        # self.log.info("ASSUMED_DATA: {}".format(assumed_data))
         template_data = instance.data["assumedTemplateData"]
         # template = instance.data["template"]
 

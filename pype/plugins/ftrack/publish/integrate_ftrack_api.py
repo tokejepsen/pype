@@ -7,7 +7,7 @@ import clique
 class IntegrateFtrackApi(pyblish.api.InstancePlugin):
     """ Commit components to server. """
 
-    order = pyblish.api.IntegratorOrder + 0.499
+    order = pyblish.api.IntegratorOrder + 0.49
     label = "Integrate Ftrack Api"
     families = ["ftrack"]
 
@@ -63,6 +63,8 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
 
         info_msg = "Created new {entity_type} with data: {data}"
         info_msg += ", metadata: {metadata}."
+
+        instance.context.data['ftrackSuccess'] = False
 
         # Iterate over components and publish
         for data in instance.data.get("ftrackComponentsList", []):
@@ -306,3 +308,5 @@ class IntegrateFtrackApi(pyblish.api.InstancePlugin):
             else:
                 # Commit changes.
                 session.commit()
+
+        instance.context.data['ftrackSuccess'] = True

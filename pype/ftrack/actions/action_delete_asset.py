@@ -41,7 +41,6 @@ class DeleteAsset(BaseAction):
         return True
 
     def _launch(self, event):
-        self.reset_session()
         try:
             self.db.install()
             args = self._translate_event(
@@ -79,7 +78,6 @@ class DeleteAsset(BaseAction):
             entity = entities[0]
             title = 'Choose items to delete from "{}"'.format(entity['name'])
             project = entity['project']
-
             self.db.Session['AVALON_PROJECT'] = project["full_name"]
 
             av_entity = self.db.find_one({
@@ -99,7 +97,7 @@ class DeleteAsset(BaseAction):
             }
             splitter = {
                 'type': 'label',
-                'value': '{}'.format(200*"-")
+                'value': '{}'.format(200 * "-")
             }
             subset_label = {
                 'type': 'label',

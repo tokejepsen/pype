@@ -231,11 +231,18 @@ function rename() {
   data.ep = $('input[name=episode]').value;
   data.epSuffix = $('input[name=ep_suffix]').value;
 
-  displayResult(JSON.stringify(data));
+  if (!data.ep) {
+    csi.evalScript('pype.alert_message("' + 'Need to fill episode code' + '")');
+    return;
+  };
 
-  csi.evalScript('batchRenamer.renameTargetedTextLayer( ' + JSON.stringify(data) + ' )', function (result) {
+  if (!data.epSuffix) {
+    csi.evalScript('pype.alert_message("' + 'Need to fill episode longer suffix' + '")');
+    return;
+  };
+
+  csi.evalScript('br.renameTargetedTextLayer( ' + JSON.stringify(data) + ' );', function (result) {
     displayResult(result);
-    csi.evalScript('pype.dumpSequenceMetadata(' + result + ')');
   });
 }
 

@@ -2,6 +2,7 @@ import ftrack_api
 from pype.ftrack import BaseEvent
 import operator
 
+ignore_me = True
 
 class NextTaskUpdate(BaseEvent):
 

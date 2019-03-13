@@ -8,10 +8,13 @@ class VersionToTaskStatus(BaseEvent):
         '''Propagates status from version to task when changed'''
         # session.commit()
 
+        user = event['source']['user']['username']
+        if user == "license@clothcatanimation.com":
+            self.log.info('status triggered automatically. Skipping task update')
+            return
+
         # start of event procedure ----------------------------------
         for entity in event['data'].get('entities', []):
-
-            # project = session.get('Show', entity['parents'][-1]['entityId'])
 
             # Filter non-assetversions
             if (
@@ -20,14 +23,6 @@ class VersionToTaskStatus(BaseEvent):
             ):
 
                 version = session.get('AssetVersion', entity['entityId'])
-
-                ft_project = None
-                # get project
-                base_proj = version['link'][0]
-                ft_project = session.get(base_proj['type'], base_proj['id'])
-                if ft_project['name'] != 'lbb2':
-                    self.log.info('>>> not a LBB project. SKIPPING')
-                    continue
 
                 try:
                     version_status = session.get(
@@ -47,12 +42,6 @@ class VersionToTaskStatus(BaseEvent):
 
                 status_to_set = None
 
-                # Filter to versions with status change to "render complete"
-                if version_status['name'].lower() == 'reviewed':
-                    status_to_set = 'Change requested'
-
-                if version_status['name'].lower() == 'approved':
-                    status_to_set = 'Complete'
 
                 if asset_type in ['Audio', 'Scene', 'Upload'] or 'renderReference' in asset_name:
                     self.log.info(

@@ -11,6 +11,7 @@ if (ExternalObject.AdobeXMPScript === undefined) {
   ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
 }
 
+// variable pype is defined in pypeAvalon.jsx
 pype = {
   setEnvs: function (env) {
     for (key in env) {
@@ -391,15 +392,12 @@ pype = {
 
 
     xmp.setProperty(kPProPrivateProjectMetadataURI, pypeData, JSON.stringify(data));
-    // $.writeln(JSON.stringify(data))
-
 
     var str = xmp.serialize();
-    $.writeln('________________________')
-    $.writeln(str)
+
     sequence.projectItem.setProjectMetadata(str, [pypeData]);
     $.writeln('________________________')
-    JSON.stringify(data)
+    $.writeln(JSON.stringify(data))
     $.writeln('________________________')
   },
 
@@ -852,10 +850,7 @@ pype = {
       removeFromQueue,
       srcInPoint,
       srcOutPoint);
-
   }
-
-
 };
 
 Number.prototype.pad = function (size) {

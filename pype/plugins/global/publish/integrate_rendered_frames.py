@@ -114,6 +114,7 @@ class IntegrateFrames(pyblish.api.InstancePlugin):
 
         if not context.data.get('version'):
             assumed_data = instance.data.get("assumedTemplateData")
+            self.log.info("ASSUMED_DATA: {}".format(assumed_data))
             assumed_version = assumed_data["version"]
             if assumed_version != next_version:
                 raise AttributeError("Assumed version 'v{0:03d}' does not match"

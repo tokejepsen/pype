@@ -97,7 +97,7 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
     // push it to metadata
     metadata.clips[selected[c].name] = {
       'parents': parents,
-      'hierarchy': hierarchy.join('/'),
+      'hierarchy': hierarchy.join('/')
     };
 
     // add increment
@@ -109,7 +109,6 @@ renamer.renameSeqHierarchy = function (data) { // eslint-disable-line no-unused-
   return JSON.stringify({
     'status': 'renamed ' + selected.length + ' clips'
   });
-
 };
 
 /**

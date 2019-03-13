@@ -21,9 +21,9 @@ class Aport(api.Action):
 
     def is_compatible(self, session):
         """Return whether the action is compatible with the session"""
-        if "AVALON_TASK" in session:
-            return True
-        return False
+        if "AVALON_PROJECT" in session:
+            return False
+        return True
 
     def process(self, session, **kwargs):
         """Implement the behavior for when the action is triggered
@@ -49,8 +49,8 @@ class Aport(api.Action):
             env = acre.compute(tools_env)
             env = acre.merge(env, current_env=dict(os.environ))
 
-            if not env.get('AVALON_WORKDIR', None):
-                os.environ["AVALON_WORKDIR"] = pype.get_workdir_template()
+            # if not env.get('AVALON_WORKDIR', None):
+            #     os.environ["AVALON_WORKDIR"] = pype.get_workdir_template()
 
             env.update(dict(os.environ))
 
