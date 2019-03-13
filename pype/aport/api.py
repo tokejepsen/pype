@@ -142,8 +142,8 @@ def deregister_plugin_path():
         aport_plugin_path = os.pathsep.join(
             [p.replace("\\", "/")
              for p in os.environ["PUBLISH_PATH"].split(os.pathsep)
-             if "aport" in p or
-             "ftrack" in p])
+             if "aport" in p
+             or "ftrack" in p])
         os.environ["PUBLISH_PATH"] = aport_plugin_path
     else:
         log.warning("deregister_plugin_path(): No PUBLISH_PATH is registred")
@@ -156,8 +156,8 @@ def register_plugin_path(publish_path):
     deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
-            os.environ["PUBLISH_PATH"].split(os.pathsep)
-            + [publish_path.replace("\\", "/")]
+            os.environ["PUBLISH_PATH"].split(os.pathsep) +
+            [publish_path.replace("\\", "/")]
         )
     else:
         os.environ["PUBLISH_PATH"] = publish_path
@@ -264,8 +264,8 @@ def _format_work_template(template, session=None):
 def registered_root():
     """Return currently registered root"""
     return os.path.normpath(
-        _registered_root["_"]
-        or self.SESSION.get("AVALON_PROJECTS") or ""
+        _registered_root["_"] or
+        self.SESSION.get("AVALON_PROJECTS") or ""
     )
 
 
