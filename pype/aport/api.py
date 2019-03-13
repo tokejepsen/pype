@@ -30,10 +30,6 @@ def get_session():
         io.install()
         self.SESSION = io.Session
 
-        for k, v in os.environ.items():
-            if 'AVALON' in k:
-                print(str((k, v)))
-
     return self.SESSION
 
 
@@ -66,8 +62,6 @@ def publish(send_json_path, get_json_path, gui):
     pype_start = os.path.join(os.getenv('PYPE_SETUP_ROOT'),
                               "app", "pype-start.py")
 
-    publish = "--publish-gui" if gui else "--publish"
-
     args = [pype_start, "--publish-gui",
             "-pp", os.environ["PUBLISH_PATH"],
             "-d", "rqst_json_data_path", send_json_path,
@@ -75,11 +69,7 @@ def publish(send_json_path, get_json_path, gui):
             ]
 
     log.debug(args)
-    # cwd = os.path.normpath(cwd)
-    # if os.path.exists(cwd):
-    #     log.warning("cwd this path exists")
-    #     log.warning(cwd)
-    # start standalone pyblish qml
+
     forward([
         sys.executable, "-u"
     ] + args,
