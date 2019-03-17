@@ -22,27 +22,39 @@ def get_session():
 
 
 @pico.expose()
-def load_representations(project="jakub_projectx",
-                         representations=[{"asset": "e09s031_0040", "subset": "referenceDefault", "representation": "mp4"}]):
-    '''
+def load_representations(project, representations):
+    '''Querry data from mongo db for defined representations.
+
+    Args:
+        project (str): name of the project
+        representations (list): representations which are required
+
+    Returns:
+        data (dict): representations in last versions
+
     # testing url:
     http://localhost:4242/api/load_representations?project=jakub_projectx&representations=[{%22asset%22:%22e09s031_0040%22,%22subset%22:%22referenceDefault%22,%22representation%22:%22mp4%22},%20{%22asset%22:%22e09s031_0030%22,%22subset%22:%22referenceDefault%22,%22representation%22:%22mp4%22}]
 
     # returning:
     {"e09s031_0040_referenceDefault":{"_id":"5c6dabaa2af61756b02f7f32","schema":"pype:representation-2.0","type":"representation","parent":"5c6dabaa2af61756b02f7f31","name":"mp4","data":{"path":"C:\\Users\\hubert\\_PYPE_testing\\projects\\jakub_projectx\\thisFolder\\e09\\s031\\e09s031_0040\\publish\\clip\\referenceDefault\\v019\\jkprx_e09s031_0040_referenceDefault_v019.mp4","template":"{publish.root}/{publish.folder}/{version.main}/{publish.file}"},"dependencies":[],"context":{"root":"C:\\Users\\hubert\\_PYPE_testing\\projects","project":{"name":"jakub_projectx","code":"jkprx"},"task":"edit","silo":"thisFolder","asset":"e09s031_0040","family":"clip","subset":"referenceDefault","VERSION":19,"hierarchy":"thisFolder\\e09\\s031","representation":"mp4"}}}
     '''
-    # TODO: find way to get rid of this
-    context(project, 'e09s031_0040', 'layout', 'premiere')
-    data = {}
-    from_mongo = [r for r in ppl.io.find({"name": "mp4",
-                                          "type": "representation"})]
 
     for repr in representations:
+        # set context for each asset individually
+        context(project, repr['asset'], '')
+        data = {}
+        # query data from mongo db for the asset's subset representation
+        from_mongo = ppl.io.find({"name": repr['representation'],
+                                  "type": "representation"})[:]
+
+        # create name which will be used on timeline clip
         name = '_'.join([repr['asset'], repr['subset']])
+        # filter out only data for last version
         related_repr = [r for r in from_mongo
                         if r['name'] in repr['representation']
                         if r['context']['asset'] in repr['asset']
                         ]
+        # assign data for the clip representation
         data[name] = related_repr[-1]
 
     return data
@@ -103,7 +115,7 @@ def publish(json_data_path, gui):
 
 
 @pico.expose()
-def context(project, asset, task, app):
+def context(project, asset, task, app='aport'):
     os.environ["AVALON_PROJECT"] = ppl.AVALON_PROJECT = project
     os.environ["AVALON_ASSET"] = ppl.AVALON_ASSET = asset
     os.environ["AVALON_TASK"] = ppl.AVALON_TASK = task
