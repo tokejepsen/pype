@@ -320,7 +320,6 @@ class DbConnector(object):
     @auto_reconnect
     def find_one(self, filter, projection=None, sort=None):
         assert isinstance(filter, dict), "filter must be <dict>"
-
         return self._database[self.Session["AVALON_PROJECT"]].find_one(
             filter=filter,
             projection=projection,

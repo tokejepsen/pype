@@ -1,40 +1,51 @@
 # api.py
 import os
 import sys
-import getpass
+
+import tempfile
 import pico
 from pico import PicoApp
 from app.api import forward, Logger
-from io_nonsingleton import DbConnector
 
-io = DbConnector()
+import pipeline as ppl
+
 log = Logger.getLogger(__name__, "aport")
-_registered_root = {"_": ""}
-self = sys.modules[__name__]
-self.SESSION = None
-
-self.AVALON_PROJECT = os.getenv("AVALON_PROJECT", None)
-self.AVALON_ASSET = os.getenv("AVALON_ASSET", None)
-self.AVALON_TASK = os.getenv("AVALON_TASK", None)
-self.AVALON_SILO = os.getenv("AVALON_SILO", None)
 
 
 @pico.expose()
 def get_session():
-    # self.SESSION = avalon.session
-    if not self.SESSION:
-        os.environ["AVALON_PROJECT"] = self.AVALON_PROJECT
-        os.environ["AVALON_ASSET"] = self.AVALON_ASSET
-        os.environ["AVALON_TASK"] = self.AVALON_TASK
-        os.environ["AVALON_SILO"] = self.AVALON_SILO
-        io.install()
-        self.SESSION = io.Session
+    ppl.AVALON_PROJECT = os.getenv("AVALON_PROJECT", None)
+    ppl.AVALON_ASSET = os.getenv("AVALON_ASSET", None)
+    ppl.AVALON_TASK = os.getenv("AVALON_TASK", None)
+    ppl.AVALON_SILO = os.getenv("AVALON_SILO", None)
+    return ppl.get_session()
 
-        for k, v in os.environ.items():
-            if 'AVALON' in k:
-                print(str((k, v)))
 
-    return self.SESSION
+@pico.expose()
+def load_representations(project="jakub_projectx",
+                         representations=[{"asset": "e09s031_0040", "subset": "referenceDefault", "representation": "mp4"}]):
+    '''
+    # testing url:
+    http://localhost:4242/api/load_representations?project=jakub_projectx&representations=[{%22asset%22:%22e09s031_0040%22,%22subset%22:%22referenceDefault%22,%22representation%22:%22mp4%22},%20{%22asset%22:%22e09s031_0030%22,%22subset%22:%22referenceDefault%22,%22representation%22:%22mp4%22}]
+
+    # returning:
+    {"e09s031_0040_referenceDefault":{"_id":"5c6dabaa2af61756b02f7f32","schema":"pype:representation-2.0","type":"representation","parent":"5c6dabaa2af61756b02f7f31","name":"mp4","data":{"path":"C:\\Users\\hubert\\_PYPE_testing\\projects\\jakub_projectx\\thisFolder\\e09\\s031\\e09s031_0040\\publish\\clip\\referenceDefault\\v019\\jkprx_e09s031_0040_referenceDefault_v019.mp4","template":"{publish.root}/{publish.folder}/{version.main}/{publish.file}"},"dependencies":[],"context":{"root":"C:\\Users\\hubert\\_PYPE_testing\\projects","project":{"name":"jakub_projectx","code":"jkprx"},"task":"edit","silo":"thisFolder","asset":"e09s031_0040","family":"clip","subset":"referenceDefault","VERSION":19,"hierarchy":"thisFolder\\e09\\s031","representation":"mp4"}}}
+    '''
+    # TODO: find way to get rid of this
+    context(project, 'e09s031_0040', 'layout', 'premiere')
+    data = {}
+    from_mongo = [r for r in ppl.io.find({"name": "mp4",
+                                          "type": "representation"})]
+
+    for repr in representations:
+        name = '_'.join([repr['asset'], repr['subset']])
+        related_repr = [r for r in from_mongo
+                        if r['name'] in repr['representation']
+                        if r['context']['asset'] in repr['asset']
+                        ]
+        data[name] = related_repr[-1]
+
+    return data
 
 
 @pico.expose()
@@ -65,7 +76,7 @@ def publish(json_data_path, gui):
     return_json_path = os.path.join(
         staging_dir, "return_data.json").replace("\\", "/")
 
-    log.info("avalon.session is: \n{}".format(self.SESSION))
+    log.info("avalon.session is: \n{}".format(ppl.SESSION))
     log.info("PUBLISH_PATH: \n{}".format(os.environ["PUBLISH_PATH"]))
 
     pype_start = os.path.join(os.getenv('PYPE_SETUP_ROOT'),
@@ -93,41 +104,43 @@ def publish(json_data_path, gui):
 
 @pico.expose()
 def context(project, asset, task, app):
-    os.environ["AVALON_PROJECT"] = self.AVALON_PROJECT = project
-    os.environ["AVALON_ASSET"] = self.AVALON_ASSET = asset
-    os.environ["AVALON_TASK"] = self.AVALON_TASK = task
-    os.environ["AVALON_SILO"] = self.AVALON_SILO = ''
+    os.environ["AVALON_PROJECT"] = ppl.AVALON_PROJECT = project
+    os.environ["AVALON_ASSET"] = ppl.AVALON_ASSET = asset
+    os.environ["AVALON_TASK"] = ppl.AVALON_TASK = task
+    os.environ["AVALON_SILO"] = ppl.AVALON_SILO = ''
 
-    get_session()
-    log.info('self.SESSION: {}'.format(self.SESSION))
+    ppl.get_session()
+    log.info('ppl.SESSION: {}'.format(ppl.SESSION))
 
     # http://localhost:4242/pipeline/context?project=this&asset=shot01&task=comp
 
-    update_current_task(task, asset, app)
+    ppl.update_current_task(task, asset, app)
 
-    project_code = io.find_one({"type": "project"})["data"].get("code", '')
+    project_code = ppl.io.find_one({"type": "project"})["data"].get("code", '')
 
-    os.environ["AVALON_PROJECTCODE"] = self.SESSION["AVALON_PROJECTCODE"] = project_code
+    os.environ["AVALON_PROJECTCODE"] = \
+        ppl.SESSION["AVALON_PROJECTCODE"] = project_code
 
-    parents = io.find_one({"type": 'asset',
-                           "name": self.AVALON_ASSET})['data']['parents']
+    parents = ppl.io.find_one({"type": 'asset',
+                               "name": ppl.AVALON_ASSET})['data']['parents']
 
     if parents and len(parents) > 0:
         # hierarchy = os.path.sep.join(hierarchy)
         hierarchy = os.path.join(*parents).replace("\\", "/")
 
-    os.environ["AVALON_HIERARCHY"] = self.SESSION["AVALON_HIERARCHY"] = hierarchy
+    os.environ["AVALON_HIERARCHY"] = \
+        ppl.SESSION["AVALON_HIERARCHY"] = hierarchy
 
-    fix_paths = {k: v.replace("\\", "/") for k, v in self.SESSION.items()
+    fix_paths = {k: v.replace("\\", "/") for k, v in ppl.SESSION.items()
                  if isinstance(v, str)}
 
-    self.SESSION.update(fix_paths)
-    self.SESSION.update({"AVALON_HIERARCHY": hierarchy,
-                         "AVALON_PROJECTCODE": project_code,
-                         "current_dir": os.getcwd().replace("\\", "/")
-                         })
+    ppl.SESSION.update(fix_paths)
+    ppl.SESSION.update({"AVALON_HIERARCHY": hierarchy,
+                        "AVALON_PROJECTCODE": project_code,
+                        "current_dir": os.getcwd().replace("\\", "/")
+                        })
 
-    return self.SESSION
+    return ppl.SESSION
 
 
 @pico.expose()
@@ -168,106 +181,6 @@ def register_plugin_path(publish_path):
 
     return "Publish registered paths: {}".format(
         os.environ["PUBLISH_PATH"].split(os.pathsep)
-    )
-
-
-def update_current_task(task=None, asset=None, app=None):
-    """Update active Session to a new task work area.
-
-    This updates the live Session to a different `asset`, `task` or `app`.
-
-    Args:
-        task (str): The task to set.
-        asset (str): The asset to set.
-        app (str): The app to set.
-
-    Returns:
-        dict: The changed key, values in the current Session.
-
-    """
-
-    mapping = {
-        "AVALON_ASSET": asset,
-        "AVALON_TASK": task,
-        "AVALON_APP": app,
-    }
-    changed = {key: value for key, value in mapping.items() if value}
-    if not changed:
-        return
-
-    # Update silo when asset changed
-    if "AVALON_ASSET" in changed:
-        asset_document = io.find_one({"name": changed["AVALON_ASSET"],
-                                      "type": "asset"})
-        assert asset_document, "Asset must exist"
-        silo = asset_document["silo"]
-        if silo is None:
-            silo = asset_document["name"]
-        changed["AVALON_SILO"] = silo
-        parents = asset_document['data']['parents']
-        hierarchy = ""
-        if len(parents) > 0:
-            hierarchy = os.path.sep.join(parents)
-        changed['AVALON_HIERARCHY'] = hierarchy
-
-    # Compute work directory (with the temporary changed session so far)
-    project = io.find_one({"type": "project"},
-                          projection={"config.template.work": True})
-    template = project["config"]["template"]["work"]
-    _session = self.SESSION.copy()
-    _session.update(changed)
-    changed["AVALON_WORKDIR"] = _format_work_template(template, _session)
-
-    # Update the full session in one go to avoid half updates
-    self.SESSION.update(changed)
-
-    # Update the environment
-    os.environ.update(changed)
-
-    return changed
-
-
-def _format_work_template(template, session=None):
-    """Return a formatted configuration template with a Session.
-
-    Note: This *cannot* format the templates for published files since the
-        session does not hold the context for a published file. Instead use
-        `get_representation_path` to parse the full path to a published file.
-
-    Args:
-        template (str): The template to format.
-        session (dict, Optional): The Session to use. If not provided use the
-            currently active global Session.
-
-    Returns:
-        str: The fully formatted path.
-
-    """
-    if session is None:
-        session = self.SESSION
-
-    project = io.find_one({'type': 'project'})
-
-    return template.format(**{
-        "root": registered_root(),
-        "project": {
-            "name": project.get("name", session["AVALON_PROJECT"]),
-            "code": project["data"].get("code", ''),
-        },
-        "silo": session["AVALON_SILO"],
-        "hierarchy": session['AVALON_HIERARCHY'],
-        "asset": session["AVALON_ASSET"],
-        "task": session["AVALON_TASK"],
-        "app": session["AVALON_APP"],
-        "user": session.get("AVALON_USER", getpass.getuser())
-    })
-
-
-def registered_root():
-    """Return currently registered root"""
-    return os.path.normpath(
-        _registered_root["_"] or
-        self.SESSION.get("AVALON_PROJECTS") or ""
     )
 
 
