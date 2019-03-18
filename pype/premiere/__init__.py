@@ -29,8 +29,8 @@ PUBLISH_PATH = os.path.join(
 
 if os.getenv("PUBLISH_PATH", None):
     os.environ["PUBLISH_PATH"] = os.pathsep.join(
-        os.environ["PUBLISH_PATH"].split(os.pathsep)
-        + [PUBLISH_PATH]
+        os.environ["PUBLISH_PATH"].split(os.pathsep) +
+        [PUBLISH_PATH]
     )
 else:
     os.environ["PUBLISH_PATH"] = PUBLISH_PATH
@@ -62,7 +62,7 @@ def request_aport(url_path, data={}):
 
 
 def extensions_sync():
-    import time
+    # import time
     process_pairs = list()
     # get extensions dir in pype.premiere.extensions
     # build dir path to premiere cep extensions
@@ -80,56 +80,52 @@ def extensions_sync():
         log.info("Extension {0} from `{1}` coppied to `{2}`".format(
             name, src, dst
         ))
-    time.sleep(10)
+    # time.sleep(10)
     return
 
 
 def install():
-
     api.set_avalon_workdir()
     log.info("Registering Premiera plug-ins..")
     reg_paths = request_aport("/api/register_plugin_path",
                               {"publish_path": PUBLISH_PATH})
 
-    log.info(str(reg_paths))
-
-    avalon.register_plugin_path(avalon.Loader, LOAD_PATH)
-    avalon.register_plugin_path(avalon.Creator, CREATE_PATH)
-    avalon.register_plugin_path(avalon.InventoryAction, INVENTORY_PATH)
+    # avalon.register_plugin_path(avalon.Loader, LOAD_PATH)
+    # avalon.register_plugin_path(avalon.Creator, CREATE_PATH)
+    # avalon.register_plugin_path(avalon.InventoryAction, INVENTORY_PATH)
 
     # Disable all families except for the ones we explicitly want to see
-    family_states = [
-        "imagesequence",
-        "mov"
-
-    ]
-    avalon.data["familiesStateDefault"] = False
-    avalon.data["familiesStateToggled"] = family_states
+    # family_states = [
+    #     "imagesequence",
+    #     "mov"
+    #
+    # ]
+    # avalon.data["familiesStateDefault"] = False
+    # avalon.data["familiesStateToggled"] = family_states
 
     # load data from templates
     api.load_data_from_templates()
 
     # synchronize extensions
     extensions_sync()
-
     message = "The Pype extension has been installed. " \
         "\nThe following publishing paths has been registered: " \
         "\n\n{}".format(
             reg_paths)
-    log.info("____message: {}".format(message))
+
     api.message(title="pyblish_paths", message=message, level="info")
-    log.info("____message: {}".format(message))
+
     # launching premiere
     exe = r"C:\Program Files\Adobe\Adobe Premiere Pro CC 2019\Adobe Premiere Pro.exe".replace(
         "\\", "/")
 
     log.info("____path exists: {}".format(os.path.exists(exe)))
 
-    launch(
-        executable=exe,
-        args=[],
-        environment=dict(os.environ),
-        cwd=os.getcwd())
+    app.forward(args=[exe],
+                silent=False,
+                cwd=os.getcwd(),
+                env=dict(os.environ),
+                shell=None)
 
 
 def uninstall():
