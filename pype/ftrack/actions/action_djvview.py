@@ -12,6 +12,8 @@ from pype import lib
 
 log = Logger.getLogger(__name__)
 
+ignore_me = True
+
 
 class DJVViewAction(BaseHandler):
     """Launch DJVView action."""
@@ -102,7 +104,7 @@ class DJVViewAction(BaseHandler):
         self.session.event_hub.subscribe(
             'topic=ftrack.action.discover and source.user.username={0}'.format(
                 self.session.api_user
-                ), self.discover
+            ), self.discover
         )
         launch_subscription = (
             'topic=ftrack.action.launch'
@@ -222,7 +224,7 @@ class DJVViewAction(BaseHandler):
                     padding = re.findall('%[0-9]*d', filename).pop()
                     index = filename.find(padding)
 
-                    full_file = filename[0:index-1]
+                    full_file = filename[0:index - 1]
                     file = full_file.split(os.sep)[-1]
                     folder = os.path.dirname(full_file)
 
