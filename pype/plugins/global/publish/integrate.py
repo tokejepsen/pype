@@ -393,7 +393,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         except KeyError:
             source = context.data["currentFile"]
 
+            self.log.debug("Registered source: {}".format(source))
             relative_path = os.path.relpath(source, api.registered_root())
+
             source = os.path.join("{root}", relative_path).replace("\\", "/")
 
         self.log.debug("Source: {}".format(source))

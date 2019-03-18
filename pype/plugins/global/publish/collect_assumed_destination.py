@@ -27,9 +27,18 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
                 "review",
                 "workfile",
                 "scene",
-                "ass"]
+                "ass",
+                "imagesequence",
+                "render"]
+
+    exclude_families = ["clip"]
 
     def process(self, instance):
+        if [ef for ef in self.exclude_families
+                for f in instance.data["families"]
+                if f in ef]:
+            self.log.info('ignoring: {}'.format(instance))
+            return
 
         self.create_destination_template(instance)
 
