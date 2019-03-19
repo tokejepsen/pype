@@ -60,6 +60,39 @@ function loadJSX() {
 // run all at loading
 loadJSX()
 
+
+function loadAnimationRendersToTimeline() {
+  // it will get type of asset and extension from input
+  // and start loading script from jsx
+  var $ = querySelector('#load');
+  var data = {};
+  data.subset = $('input[name=type]').value;
+  data.subsetExt = $('input[name=ext]').value;
+  var requestList = [];
+  // get all selected clips
+  csi.evalScript('pype.getClipsForLoadingSubsets()', function (result) {
+    // TODO: need to check if the clips are already created and this is just updating to last versions
+    var instances = JSON.parse(result);
+    var key = '';
+    // creating requesting list of dictionaries
+    for (key in instances) {
+      var clipData = {};
+      clipData.asset = key;
+      clipData.subset = data.subset;
+      clipData.representation = data.subsetExt;
+      requestList.push(clipData);
+    }
+    // gets data from mongodb
+    api.load_representations(window.ENV['AVALON_PROJECT'], requestList).then(
+      function (avalonData) {
+        // creates or updates data on timeline
+        displayResult('testing muther funcing this');
+        displayResult(JSON.stringify(avalonData));
+      }
+    );
+  });
+}
+
 function evalScript(script) {
   var callback = function (result) {
     displayResult(result);
@@ -247,6 +280,10 @@ function rename() {
 }
 
 // bind buttons
+$('#btn-getRernderAnimation').click(function () {
+  loadAnimationRendersToTimeline();
+});
+
 $('#btn-rename').click(function () {
   rename();
 });

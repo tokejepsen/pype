@@ -37,11 +37,11 @@ def load_representations(project, representations):
     # returning:
     {"e09s031_0040_referenceDefault":{"_id":"5c6dabaa2af61756b02f7f32","schema":"pype:representation-2.0","type":"representation","parent":"5c6dabaa2af61756b02f7f31","name":"mp4","data":{"path":"C:\\Users\\hubert\\_PYPE_testing\\projects\\jakub_projectx\\thisFolder\\e09\\s031\\e09s031_0040\\publish\\clip\\referenceDefault\\v019\\jkprx_e09s031_0040_referenceDefault_v019.mp4","template":"{publish.root}/{publish.folder}/{version.main}/{publish.file}"},"dependencies":[],"context":{"root":"C:\\Users\\hubert\\_PYPE_testing\\projects","project":{"name":"jakub_projectx","code":"jkprx"},"task":"edit","silo":"thisFolder","asset":"e09s031_0040","family":"clip","subset":"referenceDefault","VERSION":19,"hierarchy":"thisFolder\\e09\\s031","representation":"mp4"}}}
     '''
-
+    data = {}
     for repr in representations:
         # set context for each asset individually
         context(project, repr['asset'], '')
-        data = {}
+
         # query data from mongo db for the asset's subset representation
         from_mongo = ppl.io.find({"name": repr['representation'],
                                   "type": "representation"})[:]
@@ -54,6 +54,8 @@ def load_representations(project, representations):
                         if r['context']['asset'] in repr['asset']
                         ]
         # assign data for the clip representation
+        version = ppl.io.find_one({'_id': related_repr[-1]['parent']})
+        related_repr[-1]['version'] = version
         data[name] = related_repr[-1]
 
     return data
@@ -113,7 +115,7 @@ def context(project, asset, task, app='aport'):
     os.environ["AVALON_SILO"] = ppl.AVALON_SILO = ''
 
     ppl.get_session()
-    log.info('ppl.SESSION: {}'.format(ppl.SESSION))
+    # log.info('ppl.SESSION: {}'.format(ppl.SESSION))
 
     # http://localhost:4242/pipeline/context?project=this&asset=shot01&task=comp
 

@@ -471,7 +471,35 @@ pype = {
     instance['metadata'] = metadata;
     return instance;
   },
-
+  getClipsForLoadingSubsets: function () {
+    // instances
+    var instances = {};
+    var selected = pype.getSelectedItems();
+    for (var s = 0; s < selected.length; s++) {
+      var clip = {};
+      clip.start = selected[s].clip.start.seconds;
+      clip.end = selected[s].clip.end.seconds;
+      if (clip !== false) {
+        instances[selected[s].clip.name] = clip;
+      }
+    }
+    return JSON.stringify(instances);
+  },
+  createSubsetClips: function (data) {
+    var pypeData = pype.loadSequenceMetadata(app.project.activeSequence)
+    // instances
+    var instances = {};
+    var selected = pype.getSelectedItems();
+    for (var s = 0; s < selected.length; s++) {
+      var clip = {};
+      clip.start = selected[s].clip.start.seconds;
+      clip.end = selected[s].clip.end.seconds;
+      if (clip !== false) {
+        instances[clip.name] = clip;
+      }
+    }
+    return JSON.stringify(instances);
+  },
   getSelectedClipsAsInstances: function () {
     // get project script version and add it into clip instance data
     var version = pype.getWorkFileVersion();
@@ -522,7 +550,6 @@ pype = {
       var sliced_file = ('' + preset_files[f]).split('/')
       var file_name = sliced_file.slice((sliced_file.length - 2, -1))
       var name = ('' + file_name).split('.')[0]
-      $.writeln()
       var file = new File(preset_files[f]);
       file.encoding = "UTF8";
       file.open("r", "TEXT", "????");
@@ -530,6 +557,7 @@ pype = {
     }
     return presets
   },
+
   /**
    * Return request json data object with instances for pyblish
    * @param stagingDir {string} - path to temp directory
@@ -572,7 +600,6 @@ pype = {
     return hov + ":" + min + ":" + sec + ":" + frames;
   },
   exportThumbnail: function (name, family, version, outputPath, time, fps) {
-    $.writeln("time is: " + time);
     app.enableQE();
     var activeSequence = qe.project.getActiveSequence(); // note: make sure a sequence is active in PPro UI
     var file = name + '_' +
@@ -582,7 +609,6 @@ pype = {
     var fullPathToFile = outputPath +
       $._PPP_.getSep() +
       file;
-    $.writeln(fullPathToFile);
     var expJPEG = activeSequence.exportFrameJPEG(
       pype.convertSecToTimecode(time, fps),
       pype.convertPathString(fullPathToFile).split('/').join($._PPP_.getSep())
@@ -604,9 +630,6 @@ pype = {
 
     // instances
     var instances = request['instances']
-    // for (inst in instances) {
-    //   $.writeln(inst)
-    // };
     for (var i = 0; i < instances.length; i++) {
       // generate data for instance's representations
       // loop representations of instance and sent job to encoder
@@ -626,8 +649,7 @@ pype = {
             instances[i].metadata['ppro.clip.start'],
             instances[i].metadata['ppro.clip.end']
           ));
-          $.writeln(instances[i].files)
-          $.writeln(instances[i].files.length)
+
           waitFile = request.stagingDir + '/' + instances[i].files[(instances[i].files.length - 1)];
 
         } else if (key === 'thumbnail') {

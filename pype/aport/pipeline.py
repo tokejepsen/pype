@@ -23,9 +23,9 @@ def get_session():
         io.install()
         self.SESSION = io.Session
 
-        for k, v in os.environ.items():
-            if 'AVALON' in k:
-                print(str((k, v)))
+        # for k, v in os.environ.items():
+        #     if 'AVALON' in k:
+        #         print(str((k, v)))
 
     return self.SESSION
 
