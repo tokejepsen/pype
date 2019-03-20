@@ -1,7 +1,5 @@
 import os
 import sys
-from avalon import io
-from pprint import pprint
 import acre
 
 from avalon import api, lib

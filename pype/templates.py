@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import sys
 from avalon import io
 from avalon import api as avalon
 from . import lib
