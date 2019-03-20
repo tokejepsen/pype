@@ -56,6 +56,7 @@ def load_representations(project, representations):
         # assign data for the clip representation
         version = ppl.io.find_one({'_id': related_repr[-1]['parent']})
         related_repr[-1]['version'] = version
+        related_repr[-1]['parentClip'] = repr['parentClip']
         data[name] = related_repr[-1]
 
     return data

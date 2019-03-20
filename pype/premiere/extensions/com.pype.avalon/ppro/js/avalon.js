@@ -77,6 +77,7 @@ function loadAnimationRendersToTimeline() {
     // creating requesting list of dictionaries
     for (key in instances) {
       var clipData = {};
+      clipData.parentClip = instances[key];
       clipData.asset = key;
       clipData.subset = data.subset;
       clipData.representation = data.subsetExt;
@@ -86,8 +87,10 @@ function loadAnimationRendersToTimeline() {
     api.load_representations(window.ENV['AVALON_PROJECT'], requestList).then(
       function (avalonData) {
         // creates or updates data on timeline
-        displayResult('testing muther funcing this');
-        displayResult(JSON.stringify(avalonData));
+        var makeData = {};
+        makeData.binHierarchy = data.subset + '/' + data.subsetExt;
+        makeData.clips = avalonData;
+        csi.evalScript('pype.importFiles( ' + JSON.stringify(makeData) + ' )');
       }
     );
   });
