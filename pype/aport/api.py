@@ -55,6 +55,12 @@ def load_representations(project, representations):
                         ]
         # assign data for the clip representation
         version = ppl.io.find_one({'_id': related_repr[-1]['parent']})
+
+        # fixing path workarround
+        if '.#####.mxf' in related_repr[-1]['data']['path']:
+            related_repr[-1]['data']['path'] = related_repr[-1]['data']['path'].replace(
+                '.#####.mxf', '.mxf')
+
         related_repr[-1]['version'] = version
         related_repr[-1]['parentClip'] = repr['parentClip']
         data[name] = related_repr[-1]
@@ -163,8 +169,8 @@ def deregister_plugin_path():
         aport_plugin_path = os.pathsep.join(
             [p.replace("\\", "/")
              for p in os.environ["PUBLISH_PATH"].split(os.pathsep)
-             if "aport" in p
-             or "ftrack" in p])
+             if "aport" in p or
+             "ftrack" in p])
         os.environ["PUBLISH_PATH"] = aport_plugin_path
     else:
         log.warning("deregister_plugin_path(): No PUBLISH_PATH is registred")
@@ -177,8 +183,8 @@ def register_plugin_path(publish_path):
     deregister_plugin_path()
     if os.getenv("PUBLISH_PATH", None):
         os.environ["PUBLISH_PATH"] = os.pathsep.join(
-            os.environ["PUBLISH_PATH"].split(os.pathsep) +
-            [publish_path.replace("\\", "/")]
+            os.environ["PUBLISH_PATH"].split(os.pathsep)
+            + [publish_path.replace("\\", "/")]
         )
     else:
         os.environ["PUBLISH_PATH"] = publish_path
@@ -198,3 +204,5 @@ for name, handler in [(handler.get_name(), handler)
                       for handler in Logger.logging.root.handlers[:]]:
     if "pype" not in str(name).lower():
         Logger.logging.root.removeHandler(handler)
+
+SPLASH.hide_splash()

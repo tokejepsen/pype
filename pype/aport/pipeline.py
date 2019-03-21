@@ -125,6 +125,6 @@ def _format_work_template(template, session=None):
 def registered_root():
     """Return currently registered root"""
     return os.path.normpath(
-        self._registered_root["_"] or
-        self.SESSION.get("AVALON_PROJECTS") or ""
+        self._registered_root["_"]
+        or self.SESSION.get("AVALON_PROJECTS") or ""
     )

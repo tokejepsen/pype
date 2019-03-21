@@ -13,12 +13,11 @@ if (ExternalObject.AdobeXMPScript === undefined) {
 
 // variable pype is defined in pypeAvalon.jsx
 pype = {
-  addNewTrack: function () {
+  addNewTrack: function (numTracks) {
     app.enableQE();
-    var activeSequence = qe.project.getActiveSequence();
-    activeSequence.addTracks(1, 1, 0)
-
     var sequence = app.project.activeSequence;
+    var activeSequence = qe.project.getActiveSequence();
+    activeSequence.addTracks(numTracks, sequence.videoTracks.numTracks, 0)
 
     for (var t = 0; t < sequence.videoTracks.numTracks; t++) {
       var videoTrack = sequence.videoTracks[t];
@@ -75,11 +74,14 @@ pype = {
     return currentBin
   },
 
-  insertBinClipToTimeline: function (binClip, time) {
+  insertBinClipToTimeline: function (binClip, time, trackOrder) {
     var seq = app.project.activeSequence;
 
+    $.writeln('___trackOrder___')
+    $.writeln(trackOrder)
+
     var numVTracks = seq.videoTracks.numTracks;
-    var targetVTrack = seq.videoTracks[(numVTracks - 1)];
+    var targetVTrack = seq.videoTracks[(numVTracks + trackOrder)];
 
     if (targetVTrack) {
       targetVTrack.insertClip(binClip, time);
@@ -91,16 +93,18 @@ pype = {
    * @return {Object}
    */
   importFiles: function (data) {
-    // TODO: for now it always creates new track and adding it into it
-    pype.addNewTrack();
 
     if (app.project) {
       if (data !== undefined) {
         var pathsToImport = [];
         var namesToGetFromBin = [];
         var namesToSetToClips = [];
-        var key = '';
+
+        // TODO: for now it always creates new track and adding it into it
+        pype.addNewTrack(data.numTracks);
+
         // get all paths and names list
+        var key = '';
         for (key in data.clips) {
           var path = data.clips[key]['data']['path'];
           var fileName = path.split('/');
@@ -161,15 +165,10 @@ pype = {
             $.writeln('\n_______________________________')
             $.writeln(namesToSetToClips[i])
             $.writeln(JSON.stringify(data.clips[namesToSetToClips[i]]['parentClip']))
-            var start = data.clips[namesToSetToClips[i]]['parentClip']['start'];
-            var end = data.clips[namesToSetToClips[i]]['parentClip']['end'];
-            var fps = data.clips[namesToSetToClips[i]]['parentClip']['fps'];
-            // var startTC = pype.convertSecToTimecode(sec, fps);
-            // if (startTC === '00:00:0:NaN') {
-            //   startTC = '00:00:00:00'
-            // }
-            // startTC = startTC.replace(':', ';')
-            pype.insertBinClipToTimeline(parent.children[i], start);
+            var start = data.clips[namesToSetToClips[i]]['parentClip']['start']
+            var trackOrder = (data.clips[namesToSetToClips[i]]['parentClip']['trackOrder'] - data.numTracks - 1);
+
+            pype.insertBinClipToTimeline(parent.children[i], start, trackOrder);
           }
           return
         };
@@ -493,7 +492,8 @@ pype = {
           selected.push({
             'clip': clip,
             'sequence': seq,
-            'videoTrack': seq.videoTracks[l]
+            'videoTrack': seq.videoTracks[l],
+            'trackOrder': l
           });
         }
       }
@@ -642,17 +642,22 @@ pype = {
     var sequence = app.project.activeSequence;
     var settings = sequence.getSettings();
     var instances = {};
+    var numTracks = [];
     var selected = pype.getSelectedItems();
     for (var s = 0; s < selected.length; s++) {
       var clip = {};
       clip.start = selected[s].clip.start.seconds;
       clip.end = selected[s].clip.end.seconds;
       clip.fps = (1 / settings.videoFrameRate.seconds);
+      clip.trackOrder = selected[s].trackOrder;
       if (clip !== false) {
         instances[selected[s].clip.name] = clip;
+        if (!include(numTracks, selected[s].trackOrder)) {
+          numTracks.push(selected[s].trackOrder)
+        }
       }
     }
-    return JSON.stringify(instances);
+    return JSON.stringify([instances, numTracks.length]);
   },
   createSubsetClips: function (data) {
     var pypeData = pype.loadSequenceMetadata(app.project.activeSequence)

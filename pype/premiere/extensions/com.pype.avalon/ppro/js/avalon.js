@@ -72,7 +72,10 @@ function loadAnimationRendersToTimeline() {
   // get all selected clips
   csi.evalScript('pype.getClipsForLoadingSubsets()', function (result) {
     // TODO: need to check if the clips are already created and this is just updating to last versions
-    var instances = JSON.parse(result);
+    var resultObj = JSON.parse(result);
+    var instances = resultObj[0];
+    var numTracks = resultObj[1];
+
     var key = '';
     // creating requesting list of dictionaries
     for (key in instances) {
@@ -90,6 +93,7 @@ function loadAnimationRendersToTimeline() {
         var makeData = {};
         makeData.binHierarchy = data.subset + '/' + data.subsetExt;
         makeData.clips = avalonData;
+        makeData.numTracks = numTracks;
         csi.evalScript('pype.importFiles( ' + JSON.stringify(makeData) + ' )');
       }
     );
