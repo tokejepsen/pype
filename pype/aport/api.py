@@ -205,4 +205,4 @@ for name, handler in [(handler.get_name(), handler)
     if "pype" not in str(name).lower():
         Logger.logging.root.removeHandler(handler)
 
-SPLASH.hide_splash()
+# SPLASH.hide_splash()
