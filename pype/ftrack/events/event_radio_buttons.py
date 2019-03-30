@@ -3,9 +3,12 @@ from pype.ftrack import BaseEvent
 
 ignore_me = True
 
+ignore_me = True
+
+
 class Radio_buttons(BaseEvent):
 
-    def launch(self, session, entities, event):
+    def launch(self, session, event):
         '''Provides a readio button behaviour to any bolean attribute in
            radio_button group.'''
 
