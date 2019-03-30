@@ -70,7 +70,7 @@ function loadAnimationRendersToTimeline() {
   data.subsetExt = $('input[name=ext]').value;
   var requestList = [];
   // get all selected clips
-  csi.evalScript('pype.getClipsForLoadingSubsets()', function (result) {
+  csi.evalScript('pype.getClipsForLoadingSubsets( "' + data.subset + '" )', function (result) {
     // TODO: need to check if the clips are already created and this is just updating to last versions
     var resultObj = JSON.parse(result);
     var instances = resultObj[0];

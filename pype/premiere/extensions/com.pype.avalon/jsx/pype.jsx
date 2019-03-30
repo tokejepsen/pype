@@ -74,14 +74,17 @@ pype = {
     return currentBin
   },
 
-  insertBinClipToTimeline: function (binClip, time, trackOrder) {
+  insertBinClipToTimeline: function (binClip, time, trackOrder, numTracks, origNumTracks) {
     var seq = app.project.activeSequence;
-
-    $.writeln('___trackOrder___')
-    $.writeln(trackOrder)
-
     var numVTracks = seq.videoTracks.numTracks;
-    var targetVTrack = seq.videoTracks[(numVTracks + trackOrder)];
+
+    var addInTrack = (numTracks === 1) ?
+      (origNumTracks) :
+      (numVTracks - numTracks + trackOrder);
+    $.writeln("\n___name: " + binClip.name);
+    $.writeln("numVTracks: " + numVTracks + ", trackOrder: " + trackOrder + ", numTracks: " + numTracks + ", origNumTracks: " + origNumTracks + ", addInTrack: " + addInTrack);
+
+    var targetVTrack = seq.videoTracks[addInTrack];
 
     if (targetVTrack) {
       targetVTrack.insertClip(binClip, time);
@@ -93,13 +96,18 @@ pype = {
    * @return {Object}
    */
   importFiles: function (data) {
+    // remove all empty tracks
+    app.enableQE();
+    var activeSequence = qe.project.getActiveSequence();
+    activeSequence.removeEmptyVideoTracks();
+    activeSequence.removeEmptyAudioTracks();
 
     if (app.project) {
       if (data !== undefined) {
         var pathsToImport = [];
         var namesToGetFromBin = [];
         var namesToSetToClips = [];
-
+        var origNumTracks = app.project.activeSequence.videoTracks.numTracks;
         // TODO: for now it always creates new track and adding it into it
         pype.addNewTrack(data.numTracks);
 
@@ -120,6 +128,7 @@ pype = {
         // create parent bin object
         var parent = pype.createDeepBinStructure(data.binHierarchy);
 
+        // check if any imported clips are in the bin
         if (parent.children.numItems > 0) {
           var refinedListForImport = [];
           // loop pathsToImport
@@ -127,49 +136,49 @@ pype = {
           for (var c = 0; c < parent.children.numItems; c++) {
             binItemNames.push(parent.children[c].name)
           }
+
+          // loop formated clip names to be imported
           for (var p = 0; p < namesToSetToClips.length; p++) {
-            // loop children in parent bin
-            for (var i = 0; i < parent.children.numItems; i++) {
+            // check if the clip is not in bin items alrady
+            if (!include(binItemNames, namesToSetToClips[p])) {
+              app.project.importFiles([pathsToImport[p]],
+                1, // suppress warnings
+                parent,
+                0); // import as numbered stills
 
-              if (namesToSetToClips[p] === parent.children[i].name) {
-                parent.children[i].changeMediaPath(pathsToImport[p]);
-                // clip exists and we can update path
-                $.writeln("____clip exists and updating path");
-                return
-              } else {
+              for (var pi = 0; pi < parent.children.numItems; pi++) {
 
-                if (!include(binItemNames, namesToSetToClips[p])) {
-                  app.project.importFiles([pathsToImport[p]],
-                    1, // suppress warnings
-                    parent,
-                    0); // import as numbered stills
-
-                  for (var pi = 0; pi < parent.children.numItems; pi++) {
-
-                    if (namesToGetFromBin[p] === parent.children[pi].name) {
-                      parent.children[pi].name = namesToSetToClips[p];
-                    }
-                  }
+                if (namesToGetFromBin[p] === parent.children[pi].name) {
+                  parent.children[pi].name = namesToSetToClips[p];
+                  var start = data.clips[namesToSetToClips[p]]['parentClip']['start']
+                  pype.insertBinClipToTimeline(parent.children[pi], start, data.clips[namesToSetToClips[p]]['parentClip']['trackOrder'], data.numTracks, origNumTracks);
+                }
+              }
+            } else { // if the bin item already exist just update the path
+              // loop children in parent bin
+              for (var i = 0; i < parent.children.numItems; i++) {
+                if (namesToSetToClips[p] === parent.children[i].name) {
+                  $.writeln("__namesToSetToClips[p]__: " + namesToSetToClips[p])
+                  parent.children[i].changeMediaPath(pathsToImport[p]);
+                  // clip exists and we can update path
+                  $.writeln("____clip exists and updating path");
                 }
               }
             }
           }
 
         } else {
+
           app.project.importFiles(pathsToImport,
             1, // suppress warnings
             parent,
             0); // import as numbered stills
           for (var i = 0; i < parent.children.numItems; i++) {
             parent.children[i].name = namesToSetToClips[i];
-            $.writeln('\n_______________________________')
-            $.writeln(namesToSetToClips[i])
-            $.writeln(JSON.stringify(data.clips[namesToSetToClips[i]]['parentClip']))
             var start = data.clips[namesToSetToClips[i]]['parentClip']['start']
-            var trackOrder = (data.clips[namesToSetToClips[i]]['parentClip']['trackOrder'] - data.numTracks - 1);
-
-            pype.insertBinClipToTimeline(parent.children[i], start, trackOrder);
+            pype.insertBinClipToTimeline(parent.children[i], start, data.clips[namesToSetToClips[i]]['parentClip']['trackOrder'], data.numTracks, origNumTracks);
           }
+
           return
         };
       } else {
@@ -177,6 +186,9 @@ pype = {
         return false
       }
     }
+    // remove all empty tracks
+    activeSequence.removeEmptyVideoTracks();
+    activeSequence.removeEmptyAudioTracks();
   },
   setEnvs: function (env) {
     for (key in env) {
@@ -637,27 +649,54 @@ pype = {
     instance['metadata'] = metadata;
     return instance;
   },
-  getClipsForLoadingSubsets: function () {
+  getClipsForLoadingSubsets: function (subsetName) {
     // instances
     var sequence = app.project.activeSequence;
     var settings = sequence.getSettings();
     var instances = {};
     var numTracks = [];
+    var orders = [];
     var selected = pype.getSelectedItems();
     for (var s = 0; s < selected.length; s++) {
+      orders.push(selected[s].trackOrder);
+    }
+    var orderStart = Math.min.apply(null, orders);
+    $.writeln("__orderStart__: " + orderStart)
+
+    for (var s = 0; s < selected.length; s++) {
+      var selClipName = selected[s].clip.name;
+      $.writeln(selClipName);
+      var nameSplit = selClipName.split('_');
+
+      if (nameSplit.length > 0) {
+        $.writeln(nameSplit);
+        $.writeln(subsetName);
+        if (include(nameSplit, subsetName)) {
+          selClipName = nameSplit[0];
+        }
+      }
       var clip = {};
       clip.start = selected[s].clip.start.seconds;
       clip.end = selected[s].clip.end.seconds;
       clip.fps = (1 / settings.videoFrameRate.seconds);
-      clip.trackOrder = selected[s].trackOrder;
+      clip.trackOrder = selected[s].trackOrder - orderStart;
       if (clip !== false) {
-        instances[selected[s].clip.name] = clip;
+        instances[selClipName] = clip;
         if (!include(numTracks, selected[s].trackOrder)) {
           numTracks.push(selected[s].trackOrder)
         }
       }
     }
-    return JSON.stringify([instances, numTracks.length]);
+    var instanceSorted = {};
+    var sorting = [];
+    for (var key in instances) {
+      sorting.push(key);
+    }
+    sorting.sort();
+    for (var k = 0; k < sorting.length; k++) {
+      instanceSorted[sorting[k]] = instances[sorting[k]];
+    }
+    return JSON.stringify([instanceSorted, numTracks.length]);
   },
   createSubsetClips: function (data) {
     var pypeData = pype.loadSequenceMetadata(app.project.activeSequence)
