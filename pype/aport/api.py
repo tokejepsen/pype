@@ -38,21 +38,26 @@ def load_representations(project, representations):
     {"e09s031_0040_referenceDefault":{"_id":"5c6dabaa2af61756b02f7f32","schema":"pype:representation-2.0","type":"representation","parent":"5c6dabaa2af61756b02f7f31","name":"mp4","data":{"path":"C:\\Users\\hubert\\_PYPE_testing\\projects\\jakub_projectx\\thisFolder\\e09\\s031\\e09s031_0040\\publish\\clip\\referenceDefault\\v019\\jkprx_e09s031_0040_referenceDefault_v019.mp4","template":"{publish.root}/{publish.folder}/{version.main}/{publish.file}"},"dependencies":[],"context":{"root":"C:\\Users\\hubert\\_PYPE_testing\\projects","project":{"name":"jakub_projectx","code":"jkprx"},"task":"edit","silo":"thisFolder","asset":"e09s031_0040","family":"clip","subset":"referenceDefault","VERSION":19,"hierarchy":"thisFolder\\e09\\s031","representation":"mp4"}}}
     '''
     data = {}
+    # log.info("___project: {}".format(project))
+    # ppl.io.activate_project(project)
+    #
+    # from_mongo = ppl.io.find({"name": repr['representation'],
+    #                           "type": "representation"})[:]
+
     for repr in representations:
+        log.info("asset: {}".format(repr['asset']))
         # set context for each asset individually
         context(project, repr['asset'], '')
 
         # query data from mongo db for the asset's subset representation
-        from_mongo = ppl.io.find({"name": repr['representation'],
-                                  "type": "representation"})[:]
+        related_repr = [r for r in ppl.io.find({"name": repr['representation'],
+                                                "type": "representation",
+                                                "context.asset": repr['asset']})[:]]
 
         # create name which will be used on timeline clip
         name = '_'.join([repr['asset'], repr['subset']])
-        # filter out only data for last version
-        related_repr = [r for r in from_mongo
-                        if r['name'] in repr['representation']
-                        if r['context']['asset'] in repr['asset']
-                        ]
+
+        # log.info("___related_repr: {}".format(related_repr))
         # assign data for the clip representation
         version = ppl.io.find_one({'_id': related_repr[-1]['parent']})
 
