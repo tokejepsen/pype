@@ -122,7 +122,7 @@ class FtrackServer():
         for function in functions:
             try:
                 function['register'](self.session)
-                if function_counter%7 == 0:
+                if function_counter % 7 == 0:
                     time.sleep(0.1)
                 function_counter += 1
             except Exception as e:
@@ -132,6 +132,7 @@ class FtrackServer():
                 log.warning(msg)
 
     def run_server(self):
+        import traceback
         self.session = ftrack_api.Session(auto_connect_event_hub=True,)
 
         if self.type.lower() == 'event':
@@ -153,8 +154,11 @@ class FtrackServer():
                 return
             self.set_files(self.actionsPaths)
 
-        log.info(60*"*")
+        log.info(60 * "*")
         log.info('Registration of actions/events has finished!')
 
-        # keep event_hub on session running
-        self.session.event_hub.wait()
+        try:
+            # keep event_hub on session running
+            self.session.event_hub.wait()
+        except Exception as e:
+            traceback.print_tb(e.__traceback__)
