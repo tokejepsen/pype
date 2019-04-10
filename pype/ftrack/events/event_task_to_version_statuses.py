@@ -4,22 +4,23 @@ from pype.ftrack import BaseEvent
 
 class TaskToVersionStatus(BaseEvent):
 
-    def launch(self, session, entities, event):
+    def launch(self, session, event):
         '''Propagates status from version to task when changed'''
         session.commit()
 
         user = event['source']['user']['username']
 
         if user == "license@clothcatanimation.com":
-            self.log.info('status triggered automatically. Skipping version update')
+            self.log.info(
+                'status triggered automatically. Skipping version update')
             return
         # start of event procedure ----------------------------------
         for entity in event['data'].get('entities', []):
 
             # Filter non-assetversions
             if (
-                entity['entityType'] == 'task' and
-                'statusid' in entity['keys']
+                entity['entityType'] == 'task'
+                and 'statusid' in entity['keys']
             ):
 
                 task = session.get('Task', entity['entityId'])
@@ -28,7 +29,6 @@ class TaskToVersionStatus(BaseEvent):
                 last_version = asset['versions'][-1]
                 self.log.info('>>> VERSION {}'.format(
                     asset['versions'][0]['version']))
-
 
                 task_status = session.get(
                     'Status', entity['changes']['statusid']['new']
