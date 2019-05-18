@@ -54,21 +54,31 @@ def load_representations(project, representations):
                                                 "type": "representation",
                                                 "context.asset": repr['asset']})[:]]
 
+        versions_dict = {r['context']['version']: i
+                         for i, r in enumerate(related_repr)}
+        versions_list = [v for v in versions_dict.keys()]
+        sorted(versions_list)
+
+        version_index_last = versions_dict[max(versions_list)]
+
+        log.info("version_index_last: {}".format(version_index_last))
         # create name which will be used on timeline clip
         name = '_'.join([repr['asset'], repr['subset']])
 
         # log.info("___related_repr: {}".format(related_repr))
         # assign data for the clip representation
-        version = ppl.io.find_one({'_id': related_repr[-1]['parent']})
+        version = ppl.io.find_one(
+            {'_id': related_repr[version_index_last]['parent']})
+        log.info("version: {}".format(version))
 
         # fixing path workarround
-        if '.#####.mxf' in related_repr[-1]['data']['path']:
-            related_repr[-1]['data']['path'] = related_repr[-1]['data']['path'].replace(
+        if '.#####.mxf' in related_repr[version_index_last]['data']['path']:
+            related_repr[version_index_last]['data']['path'] = related_repr[version_index_last]['data']['path'].replace(
                 '.#####.mxf', '.mxf')
 
-        related_repr[-1]['version'] = version
-        related_repr[-1]['parentClip'] = repr['parentClip']
-        data[name] = related_repr[-1]
+        related_repr[version_index_last]['version'] = version
+        related_repr[version_index_last]['parentClip'] = repr['parentClip']
+        data[name] = related_repr[version_index_last]
 
     return data
 
