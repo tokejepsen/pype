@@ -204,7 +204,8 @@ pype = {
 
   convertPathString: function (path) {
     return path.replace(
-      new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), '');
+      new RegExp('\\\\', 'g'), '/').replace(new RegExp('//\\?/', 'g'), '').replace(
+      new RegExp('/', 'g'), '\\').replace('UNC', '\\');;
   },
 
   getProjectFileData: function () {
@@ -212,8 +213,8 @@ pype = {
     var projPath = new File(app.project.path)
     var obj = {
       projectfile: app.project.name,
-      projectpath: projPath.fsName,
-      projectdir: pype.convertPathString(app.project.path).split('/').slice(0, -1).join('/')
+      projectpath: pype.convertPathString(projPath.fsName),
+      projectdir: pype.convertPathString(app.project.path).split('\\').slice(0, -1).join('\\')
     };
     return JSON.stringify(obj);
   },
@@ -785,7 +786,7 @@ pype = {
       framerate: (1 / settings.videoFrameRate.seconds),
       host: $.getenv('AVALON_APP'),
       hostVersion: $.getenv('AVALON_APP_NAME').split('_')[1],
-      cwd: pype.convertPathString(app.project.path).split('/').slice(0, -1).join('/')
+      cwd: pype.convertPathString(app.project.path).split('\\').slice(0, -1).join('\\')
     };
     var instances = pype.getSelectedClipsAsInstances();
     request['instances'] = instances;

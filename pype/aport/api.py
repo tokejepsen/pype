@@ -102,14 +102,16 @@ def publish(send_json_path, get_json_path, gui):
     pype_start = os.path.join(os.getenv('PYPE_SETUP_ROOT'),
                               "app", "pype-start.py")
 
-    args = [pype_start, "--publish-gui",
+    args = [pype_start,
+            "--root", os.environ['AVALON_PROJECTS'], "--publish-gui",
             "-pp", os.environ["PUBLISH_PATH"],
             "-d", "rqst_json_data_path", send_json_path,
             "-d", "post_json_data_path", get_json_path
             ]
 
     log.debug(args)
-
+    log.info("_aport.api Variable `AVALON_PROJECTS` had changed to `{0}`.".format(
+        os.environ['AVALON_PROJECTS']))
     forward([
         sys.executable, "-u"
     ] + args,

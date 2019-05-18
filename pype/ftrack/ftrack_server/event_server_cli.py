@@ -102,8 +102,17 @@ def cli_login():
                 log.info('Exiting...')
                 return
 
-    server = FtrackServer('event')
-    server.run_server()
+    count = 1
+    loop = True
+    while loop:
+        try:
+            server = FtrackServer('event')
+            server.run_server()
+        except Exception:
+            log.warning("Ftrack crashed: `{}` times".format(count))
+            count += 1
+            if count == 10:
+                loop = False
 
 
 def main():

@@ -29,6 +29,7 @@ def load_data_from_templates():
     """
 
     from . import api
+
     if not any([
         api.Dataflow,
         api.Anatomy,
@@ -36,7 +37,24 @@ def load_data_from_templates():
         api.Metadata
     ]
     ):
-        # base = Templates()
+        # fixing root paths to avalon database root_path
+        try:
+            project_root = io.find_one({"type": "project"})[
+                "data"].get("project_root", None)
+        except KeyError:
+            project_root = None
+
+        if project_root:
+            for k, v in os.environ.items():
+                if "PYPE_STUDIO_PROJECTS" in k:
+                    os.environ[k] = project_root
+                    log.info("Variable `{0}` had changed to `{1}`.".format(
+                        k, project_root))
+            os.environ['AVALON_PROJECTS'] = project_root
+            log.info("Variable `AVALON_PROJECTS` had changed to `{0}`.".format(
+                os.environ['AVALON_PROJECTS']))
+
+        # filling up singletons
         t = Templates(type=["anatomy", "metadata", "dataflow", "colorspace"])
         api.Anatomy = t.anatomy
         api.Metadata = t.metadata.format()
