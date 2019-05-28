@@ -141,6 +141,7 @@ function publish() {
   // var gui = $('input[name=gui]').checked;
   var gui = true;
   var versionUp = $('input[name=version-up]').checked;
+  var audioOnly = $('input[name=audio-only]').checked;
   var jsonSendPath = $('input[name=send-path]').value;
   var jsonGetPath = $('input[name=get-path]').value;
   var publish_path = window.ENV['PUBLISH_PATH'];
@@ -167,9 +168,10 @@ function publish() {
     });
 
     // publishing file
-    csi.evalScript('pype.getPyblishRequest("' + stagingDir + '");', function (r) {
+    csi.evalScript('pype.getPyblishRequest("' + stagingDir + '", ' + audioOnly + ');', function (r) {
       var request = JSON.parse(r);
-      displayResult(r);
+      displayResult(JSON.stringify(request));
+
       csi.evalScript('pype.encodeRepresentation(' + JSON.stringify(request) + ');', function (result) {
         // create json for pyblish
         var jsonfile = require('jsonfile');

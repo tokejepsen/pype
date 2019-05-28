@@ -777,7 +777,7 @@ pype = {
    * @param stagingDir {string} - path to temp directory
    * @return {json string}
    */
-  getPyblishRequest: function (stagingDir) {
+  getPyblishRequest: function (stagingDir, audioOnly) {
     var sequence = app.project.activeSequence;
     var settings = sequence.getSettings();
     var request = {
@@ -788,8 +788,25 @@ pype = {
       hostVersion: $.getenv('AVALON_APP_NAME').split('_')[1],
       cwd: pype.convertPathString(app.project.path).split('\\').slice(0, -1).join('\\')
     };
+    var sendInstances = [];
     var instances = pype.getSelectedClipsAsInstances();
-    request['instances'] = instances;
+    if (audioOnly) {
+      for (var i = 0; i < instances.length; i++) {
+        var representations = instances[i].representations;
+        var newRepr = {};
+        for (var key in representations) {
+          var _include = ['audio', 'thumbnail', 'projectfile'];
+          if (include(_include, key)) {
+            newRepr[key] = representations[key];
+          }
+        }
+        instances[i].representations = newRepr;
+        sendInstances.push(instances[i]);
+      }
+    } else {
+      sendInstances = instances;
+    }
+    request['instances'] = sendInstances;
     return JSON.stringify(request);
   },
 
