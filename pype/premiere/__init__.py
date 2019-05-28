@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 
 from pysync import walktree
 
@@ -18,10 +19,13 @@ log = api.Logger.getLogger(__name__, "premiere")
 
 AVALON_CONFIG = os.getenv("AVALON_CONFIG", "pype")
 EXTENSIONS_PATH_LOCAL = os.getenv("EXTENSIONS_PATH", None)
+EXTENSIONS_CACHE_PATH = os.getenv("EXTENSIONS_CACHE_PATH", None)
 EXTENSIONS_PATH_REMOTE = os.path.join(os.path.dirname(__file__), "extensions")
 PARENT_DIR = os.path.dirname(__file__)
 PACKAGE_DIR = os.path.dirname(PARENT_DIR)
 PLUGINS_DIR = os.path.join(PACKAGE_DIR, "plugins")
+
+_clearing_cache = ["com.pype.rename", "com.pype.avalon"]
 
 PUBLISH_PATH = os.path.join(
     PLUGINS_DIR, "premiere", "publish"
@@ -39,6 +43,18 @@ LOAD_PATH = os.path.join(PLUGINS_DIR, "premiere", "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "premiere", "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "premiere", "inventory")
 
+def clearing_caches_ui():
+    '''Before every start of premiere it will make sure there is not
+    outdated stuff in cep_cache dir'''
+
+    for d in os.listdir(EXTENSIONS_CACHE_PATH):
+        match = [p for p in _clearing_cache
+                if str(p) in d]
+
+        if match:
+            path = os.path.normpath(os.path.join(EXTENSIONS_CACHE_PATH, d))
+            log.info("Removing dir: {}".format(path))
+            shutil.rmtree(path, ignore_errors=True)
 
 def request_aport(url_path, data={}):
     try:
@@ -105,6 +121,9 @@ def install():
 
     # load data from templates
     api.load_data_from_templates()
+
+    # remove cep_cache from user temp dir
+    clearing_caches_ui()
 
     # synchronize extensions
     extensions_sync()
