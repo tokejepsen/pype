@@ -52,9 +52,12 @@ def clearing_caches_ui():
                 if str(p) in d]
 
         if match:
-            path = os.path.normpath(os.path.join(EXTENSIONS_CACHE_PATH, d))
-            log.info("Removing dir: {}".format(path))
-            shutil.rmtree(path, ignore_errors=True)
+            try:
+                path = os.path.normpath(os.path.join(EXTENSIONS_CACHE_PATH, d))
+                log.info("Removing dir: {}".format(path))
+                shutil.rmtree(path, ignore_errors=True)
+            except Exception as e:
+                log.debug("problem: {}".format(e))
 
 def request_aport(url_path, data={}):
     try:
