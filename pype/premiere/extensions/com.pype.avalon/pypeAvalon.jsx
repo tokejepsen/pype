@@ -11,6 +11,10 @@
  * then your use, modification, or distribution of it requires the prior
  * written permission of Adobe.
  **************************************************************************/
+var json2 = '~/AppData/Roaming/Adobe/CEP/extensions/com.pype.avalon/js/json2.js';
+$.evalFile(json2);
+
+
 if (typeof ($) == 'undefined') {
   $ = {};
 }
