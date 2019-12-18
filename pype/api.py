@@ -26,7 +26,8 @@ from .lib import (
     get_subsets,
     get_version_from_path,
     modified_environ,
-    add_tool_to_environment
+    add_tool_to_environment,
+    find_collections
 )
 
 # Special naming case for subprocess since its a built-in method.
