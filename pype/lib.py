@@ -648,3 +648,59 @@ class CustomNone:
     def __repr__(self):
         """Representation of custom None."""
         return "<CustomNone-{}>".format(str(self.identifier))
+
+
+def find_collections(root,
+                     regex=None,
+                     exclude_regex=None,
+                     frame_start=None,
+                     frame_end=None):
+    """Collect sequence collections in root"""
+
+    from avalon.vendor import clique
+
+    files = list()
+    for filename in os.listdir(root):
+
+        # Must have extension
+        ext = os.path.splitext(filename)[1]
+        if not ext:
+            continue
+
+        # Only files
+        if not os.path.isfile(os.path.join(root, filename)):
+            continue
+
+        # Include and exclude regex
+        if regex and not re.search(regex, filename):
+            continue
+        if exclude_regex and re.search(exclude_regex, filename):
+            continue
+
+        files.append(filename)
+
+    # Match collections
+    # Support filenames like: projectX_shot01_0010.tiff with this regex
+    pattern = r"(?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
+    collections, remainder = clique.assemble(files,
+                                             patterns=[pattern],
+                                             minimum_items=1)
+
+    # Ignore any remainders
+    if remainder:
+        print("Skipping remainder {}".format(remainder))
+
+    # Exclude any frames outside start and end frame.
+    for collection in collections:
+        for index in list(collection.indexes):
+            if frame_start is not None and index < frame_start:
+                collection.indexes.discard(index)
+                continue
+            if frame_end is not None and index > frame_end:
+                collection.indexes.discard(index)
+                continue
+
+    # Keep only collections that have at least a single frame
+    collections = [c for c in collections if c.indexes]
+
+    return collections

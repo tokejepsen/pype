@@ -15,6 +15,7 @@ import json
 
 import pyblish.api
 from avalon import api
+import pype.api as pyapi
 
 
 def collect(root,
