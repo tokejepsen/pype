@@ -23,7 +23,7 @@ class StoreThumbnailsToAvalon(BaseAction):
     # Action description
     description = 'Test action'
     # roles that are allowed to register this action
-    role_list = ["Pypeclub", "Administrator", "Project Manager"]
+    register_roles = ["Pypeclub", "Administrator", "Project Manager"]
 
     icon = '{}/ftrack/action_icons/PypeAdmin.svg'.format(
         os.environ.get('PYPE_STATICS_SERVER', '')

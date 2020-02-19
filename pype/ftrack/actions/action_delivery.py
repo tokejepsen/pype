@@ -2,7 +2,6 @@ import os
 import copy
 import shutil
 import collections
-import string
 
 import clique
 from bson.objectid import ObjectId
@@ -26,7 +25,7 @@ class Delivery(BaseAction):
     #: Action description.
     description = "Deliver data to client"
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub", "Administrator", "Project manager"]
+    register_roles = ["Pypeclub", "Administrator", "Project manager"]
     icon = '{}/ftrack/action_icons/Delivery.svg'.format(
         os.environ.get('PYPE_STATICS_SERVER', '')
     )
@@ -341,7 +340,7 @@ class Delivery(BaseAction):
                 self.report_items[msg].append(sub_msg)
                 self.log.warning(
                     "{} Representation: \"{}\" Filled: <{}>".format(
-                        msg, str(repre["_id"]), str(result)
+                        msg, str(repre["_id"]), str(test_path)
                     )
                 )
                 continue
@@ -521,6 +520,7 @@ class Delivery(BaseAction):
             "success": False,
             "message": "Delivery Finished"
         }
+
 
 def register(session, plugins_presets={}):
     '''Register plugin. Called when used as an plugin.'''

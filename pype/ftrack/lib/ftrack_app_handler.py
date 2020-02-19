@@ -3,15 +3,14 @@ import sys
 import platform
 from avalon import lib as avalonlib
 import acre
-from pype import api as pype
 from pype import lib as pypelib
 from pypeapp import config
-from .ftrack_base_handler import BaseHandler
+from .ftrack_action_handler import BaseAction
 
 from pypeapp import Anatomy
 
 
-class AppAction(BaseHandler):
+class AppAction(BaseAction):
     '''Custom Action base class
 
     <label> - a descriptive string identifing your action.
@@ -157,6 +156,15 @@ class AppAction(BaseHandler):
         '''
 
         entity = entities[0]
+        parent_entity = entity['parent']
+        if parent_entity.entity_type.lower() == "project":
+            return {
+                "success": False,
+                "message": (
+                    "Pype does not allow Task as hierarchical child of Project"
+                )
+            }
+
         project_name = entity['project']['full_name']
 
         database = pypelib.get_avalon_database()
@@ -177,19 +185,24 @@ class AppAction(BaseHandler):
         # set environments for Avalon
         os.environ["AVALON_PROJECT"] = project_name
         os.environ["AVALON_SILO"] = entity['ancestors'][0]['name']
-        os.environ["AVALON_ASSET"] = entity['parent']['name']
+        os.environ["AVALON_ASSET"] = parent_entity['name']
         os.environ["AVALON_TASK"] = entity['name']
         os.environ["AVALON_APP"] = self.identifier.split("_")[0]
         os.environ["AVALON_APP_NAME"] = self.identifier
 
-        anatomy = Anatomy()
+        avalon_entity = database[project_name].find_one({
+            "type": 'asset',
+            "name": parent_entity['name']
+        })
+        if not avalon_entity:
+            return {
+                "success": False,
+                "message": "Entity is not synchronized to avalon"
+            }
+
+        parents = avalon_entity['data']['parents']
 
         hierarchy = ""
-        parents = database[project_name].find_one({
-            "type": 'asset',
-            "name": entity['parent']['name']
-        })['data']['parents']
-
         if parents:
             hierarchy = os.path.join(*parents)
 
@@ -207,29 +220,20 @@ class AppAction(BaseHandler):
             "hierarchy": hierarchy,
         }
 
-        av_project = database[project_name].find_one({"type": 'project'})
-        templates = None
-        if av_project:
-            work_template = av_project.get('config', {}).get('template', {}).get(
-                'work', None
-            )
-        work_template = None
+        anatomy = Anatomy()
+        filled_anatomy = anatomy.format(data)
         try:
-            work_template = work_template.format(**data)
-        except Exception:
-            try:
-                anatomy = anatomy.format(data)
-                work_template = anatomy["work"]["folder"]
+            work_template = filled_anatomy["work"]["folder"]
 
-            except Exception as exc:
-                msg = "{} Error in anatomy.format: {}".format(
-                    __name__, str(exc)
-                )
-                self.log.error(msg, exc_info=True)
-                return {
-                    'success': False,
-                    'message': msg
-                }
+        except Exception as exc:
+            msg = "{} Error in anatomy.format: {}".format(
+                __name__, str(exc)
+            )
+            self.log.error(msg, exc_info=True)
+            return {
+                'success': False,
+                'message': msg
+            }
 
         workdir = os.path.normpath(work_template)
         os.environ["AVALON_WORKDIR"] = workdir
@@ -238,31 +242,16 @@ class AppAction(BaseHandler):
         except FileExistsError:
             pass
 
-        # collect all parents from the task
-        parents = []
-        for item in entity['link']:
-            parents.append(session.get(item['type'], item['id']))
-
         # collect all the 'environment' attributes from parents
         tools_attr = [os.environ["AVALON_APP"], os.environ["AVALON_APP_NAME"]]
-        for parent in reversed(parents):
-            # check if the attribute is empty, if not use it
-            if parent['custom_attributes']['tools_env']:
-                tools_attr.extend(parent['custom_attributes']['tools_env'])
-                break
+        tools_attr.extend(
+            (avalon_entity["data"].get("tools_env") or [])
+        )
 
         tools_env = acre.get_tools(tools_attr)
         env = acre.compute(tools_env)
         env = acre.merge(env, current_env=dict(os.environ))
         env = acre.append(dict(os.environ), env)
-
-
-        #
-        # tools_env = acre.get_tools(tools)
-        # env = acre.compute(dict(tools_env))
-        # env = acre.merge(env, dict(os.environ))
-        # os.environ = acre.append(dict(os.environ), env)
-        # os.environ = acre.compute(os.environ)
 
         # Get path to execute
         st_temp_path = os.environ['PYPE_CONFIG']
@@ -280,7 +269,6 @@ class AppAction(BaseHandler):
                 if os.path.isfile(fpath) and os.access(fpath, os.X_OK):
                     execfile = fpath
                     break
-                pass
 
             # Run SW if was found executable
             if execfile is not None:
@@ -290,10 +278,9 @@ class AppAction(BaseHandler):
                     'success': False,
                     'message': "We didn't found launcher for {0}"
                     .format(self.label)
-                    }
-                pass
+                }
 
-        if sys.platform.startswith('linux'):
+        elif sys.platform.startswith('linux'):
             execfile = os.path.join(path.strip('"'), self.executable)
             if os.path.isfile(execfile):
                 try:
@@ -316,7 +303,7 @@ class AppAction(BaseHandler):
                         'message': "No executable permission - {}".format(
                             execfile)
                         }
-                    pass
+
             else:
                 self.log.error('Launcher doesn\'t exist - {}'.format(
                     execfile))
@@ -324,7 +311,7 @@ class AppAction(BaseHandler):
                     'success': False,
                     'message': "Launcher doesn't exist - {}".format(execfile)
                 }
-                pass
+
             # Run SW if was found executable
             if execfile is not None:
                 avalonlib.launch(
@@ -336,7 +323,6 @@ class AppAction(BaseHandler):
                     'message': "We didn't found launcher for {0}"
                     .format(self.label)
                     }
-                pass
 
         # Change status of task to In progress
         presets = config.get_presets()["ftrack"]["ftrack_config"]
@@ -387,7 +373,7 @@ class AppAction(BaseHandler):
 
         # Set origin avalon environments
         for key, value in env_origin.items():
-            if value == None:
+            if value is None:
                 value = ""
             os.environ[key] = value
 

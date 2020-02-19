@@ -1,7 +1,42 @@
+import os
+import datetime
+import requests
+
 from bson.objectid import ObjectId
 
 from .avalon_sync import CustAttrIdKey
 import avalon.io
+
+
+def get_ftrack_server_time(ftrack_url=None):
+    datetime_format = "%a, %d %b %Y %H:%M:%S"
+
+    if ftrack_url is None:
+        ftrack_url = os.environ.get("FTRACK_SERVER")
+
+    # Send "ping" to server
+    response = requests.get(ftrack_url)
+
+    # Get `Date` key from headers
+    server_time_str_orig = response.headers.get("Date")
+
+    # Split Date by `space`
+    server_time_items = server_time_str_orig.split(" ")
+    # pop last item which is time zone (should be GMT)
+    # TODO add check of GMT
+    time_zone = server_time_items.pop(-1)
+    server_time_str = " ".join(server_time_items)
+
+    return datetime.datetime.strptime(
+        server_time_str, datetime_format
+    )
+
+
+def get_ftrack_server_time_delta(ftrack_url=None):
+    ftrack_datetime_obj = get_ftrack_server_time(ftrack_url)
+    now = datetime.datetime.utcnow()
+
+    return now - ftrack_datetime_obj
 
 
 def get_project_from_entity(entity):

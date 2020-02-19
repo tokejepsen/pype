@@ -21,7 +21,7 @@ class PypeUpdateFromV2_2_0(BaseAction):
     description = "Use when Pype was updated from v2.2.0 to v2.3.0 or higher"
 
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub", "Administrator"]
+    register_roles = ["Pypeclub", "Administrator"]
     icon = "{}/ftrack/action_icons/PypeUpdate.svg".format(
         os.environ.get("PYPE_STATICS_SERVER", "")
     )

@@ -42,7 +42,7 @@ class SyncToAvalonLocal(BaseAction):
     #: priority
     priority = 200
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub"]
+    register_roles = ["Pypeclub"]
     icon = '{}/ftrack/action_icons/PypeAdmin.svg'.format(
         os.environ.get('PYPE_STATICS_SERVER', '')
     )

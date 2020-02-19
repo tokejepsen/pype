@@ -15,7 +15,7 @@ class SeedDebugProject(BaseAction):
     #: priority
     priority = 100
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub"]
+    register_roles = ["Pypeclub"]
     icon = "{}/ftrack/action_icons/SeedProject.svg".format(
         os.environ.get("PYPE_STATICS_SERVER", "")
     )

@@ -18,7 +18,7 @@ class AttributesRemapper(BaseAction):
     description = 'Remaps attributes in avalon DB'
 
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub", "Administrator"]
+    register_roles = ["Pypeclub", "Administrator"]
     icon = '{}/ftrack/action_icons/PypeDoctor.svg'.format(
         os.environ.get('PYPE_STATICS_SERVER', '')
     )
@@ -150,7 +150,6 @@ class AttributesRemapper(BaseAction):
                 'message': 'Nothing to update'
             }
 
-
         self.db_con.install()
 
         relevant_types = ["project", "asset", "version"]
@@ -277,6 +276,7 @@ class AttributesRemapper(BaseAction):
                 items.append(message)
 
         self.show_interface(items=items, title=title, event=event)
+
 
 def register(session, plugins_presets={}):
     '''Register plugin. Called when used as an plugin.'''

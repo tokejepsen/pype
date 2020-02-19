@@ -20,7 +20,7 @@ class DeleteOldVersions(BaseAction):
         "Delete files from older publishes so project can be"
         " archived with only lates versions."
     )
-    role_list = ["Pypeclub", "Project Manager", "Administrator"]
+    register_roles = ["Pypeclub", "Project Manager", "Administrator"]
     icon = '{}/ftrack/action_icons/PypeAdmin.svg'.format(
         os.environ.get('PYPE_STATICS_SERVER', '')
     )

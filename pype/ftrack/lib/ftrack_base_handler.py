@@ -34,6 +34,7 @@ class BaseHandler(object):
     # Type is just for logging purpose (e.g.: Action, Event, Application,...)
     type = 'No-type'
     ignore_me = False
+    roles_register = []
     preactions = []
 
     def __init__(self, session, plugins_presets={}):
@@ -147,13 +148,13 @@ class BaseHandler(object):
         self.session.reset()
 
     def _preregister(self):
-        if hasattr(self, "role_list") and len(self.role_list) > 0:
+        if self.register_roles:
             username = self.session.api_user
             user = self.session.query(
                 'User where username is "{}"'.format(username)
             ).one()
             available = False
-            lowercase_rolelist = [x.lower() for x in self.role_list]
+            lowercase_rolelist = [x.lower() for x in self.register_roles]
             for role in user['user_security_roles']:
                 if role['security_role']['name'].lower() in lowercase_rolelist:
                     available = True
@@ -191,48 +192,6 @@ class BaseHandler(object):
         '''
 
         raise NotImplementedError()
-
-    def _discover(self, event):
-        items = {
-            'items': [{
-                'label': self.label,
-                'variant': self.variant,
-                'description': self.description,
-                'actionIdentifier': self.identifier,
-                'icon': self.icon,
-            }]
-        }
-
-        args = self._translate_event(
-            self.session, event
-        )
-
-        accepts = self.discover(
-            self.session, *args
-        )
-
-        if accepts is True:
-            self.log.debug(u'Discovering action with selection: {0}'.format(
-                event['data'].get('selection', [])))
-            return items
-
-    def discover(self, session, entities, event):
-        '''Return true if we can handle the selected entities.
-
-        *session* is a `ftrack_api.Session` instance
-
-
-        *entities* is a list of tuples each containing the entity type and the entity id.
-        If the entity is a hierarchical you will always get the entity
-        type TypedContext, once retrieved through a get operation you
-        will have the "real" entity type ie. example Shot, Sequence
-        or Asset Build.
-
-        *event* the unmodified original event
-
-        '''
-
-        return False
 
     def _translate_event(self, session, event):
         '''Return *event* translated structure to be used with the API.'''
@@ -387,6 +346,36 @@ class BaseHandler(object):
         *event* the unmodified original event
         '''
         return None
+
+    def get_user_from_event(self, event):
+        # just return if user was already queried in another event
+        if "user_object" in event["data"]:
+            return event["data"]["user_object"]
+
+        query_key = "id"
+        query_value = (
+            event
+            .get("source", {})
+            .get("user", {})
+            .get("id")
+        )
+        if not query_value:
+            query_key = "username"
+            query_value = (
+                event
+                .get("source", {})
+                .get("user", {})
+                .get("username")
+            )
+            if not query_value:
+                return None
+
+        user = self.session.query(
+            "User where {} is \"{}\"".format(query_key, query_value)
+        ).first()
+        event["data"]["user_object"] = user
+
+        return user
 
     def _handle_result(self, session, result, entities, event):
         '''Validate the returned result from the action callback'''

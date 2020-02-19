@@ -1,10 +1,6 @@
 import os
-import sys
 import json
-import argparse
-import logging
 
-import ftrack_api
 from pype.ftrack import BaseAction
 
 
@@ -34,8 +30,8 @@ class CustomAttributeDoctor(BaseAction):
     }
 
     # Roles for new custom attributes
-    read_roles = ['ALL',]
-    write_roles = ['ALL',]
+    read_roles = ['ALL']
+    write_roles = ['ALL']
 
     data_ca = {
         'handleStart': {
@@ -295,42 +291,3 @@ def register(session, plugins_presets={}):
     '''Register plugin. Called when used as an plugin.'''
 
     CustomAttributeDoctor(session, plugins_presets).register()
-
-
-def main(arguments=None):
-    '''Set up logging and register action.'''
-    if arguments is None:
-        arguments = []
-
-    parser = argparse.ArgumentParser()
-    # Allow setting of logging level from arguments.
-    loggingLevels = {}
-    for level in (
-        logging.NOTSET, logging.DEBUG, logging.INFO, logging.WARNING,
-        logging.ERROR, logging.CRITICAL
-    ):
-        loggingLevels[logging.getLevelName(level).lower()] = level
-
-    parser.add_argument(
-        '-v', '--verbosity',
-        help='Set the logging output verbosity.',
-        choices=loggingLevels.keys(),
-        default='info'
-    )
-    namespace = parser.parse_args(arguments)
-
-    # Set up basic logging
-    logging.basicConfig(level=loggingLevels[namespace.verbosity])
-
-    session = ftrack_api.Session()
-    register(session)
-
-    # Wait for events
-    logging.info(
-        'Registered actions and listening for events. Use Ctrl-C to abort.'
-    )
-    session.event_hub.wait()
-
-
-if __name__ == '__main__':
-    raise SystemExit(main(sys.argv[1:]))

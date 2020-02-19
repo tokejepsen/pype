@@ -22,7 +22,7 @@ class DeleteAssetSubset(BaseAction):
         os.environ.get("PYPE_STATICS_SERVER", "")
     )
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub", "Administrator", "Project Manager"]
+    register_roles = ["Pypeclub", "Administrator", "Project Manager"]
     #: Db connection
     dbcon = DbConnector()
 

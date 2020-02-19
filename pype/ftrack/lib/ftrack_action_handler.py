@@ -20,6 +20,7 @@ class BaseAction(BaseHandler):
     description = None
     icon = None
     type = 'Action'
+    discover_roles = []
 
     def __init__(self, session, plugins_presets={}):
         '''Expects a ftrack_api.Session instance'''
@@ -34,6 +35,10 @@ class BaseAction(BaseHandler):
             raise ValueError(
                 'Action missing identifier.'
             )
+
+        self.identifier = "{}.{}".format(
+            self.identifier, session.event_hub.id
+        )
 
     def register(self):
         '''
@@ -60,6 +65,64 @@ class BaseAction(BaseHandler):
             launch_subscription,
             self._launch
         )
+
+    def _discover(self, event):
+        args = self._translate_event(self.session, event)
+
+        accepts = self.discover(self.session, *args)
+        if not accepts:
+            return None
+
+        if self.discover_roles:
+            user = self.get_user_from_event(event)
+            if not user:
+                return None
+
+            lowercase_rolelist = [
+                role_name.lower() for role_name in self.discover_roles
+            ]
+            available = False
+            for role in user["user_security_roles"]:
+                if role["security_role"]["name"].lower() in lowercase_rolelist:
+                    available = True
+                    break
+
+            if not available:
+                return None
+
+        self.log.debug(
+            'Discovering action with selection: {0}'.format(
+                event['data'].get('selection', [])
+            )
+        )
+
+        return {
+            'items': [{
+                'label': self.label,
+                'variant': self.variant,
+                'description': self.description,
+                'actionIdentifier': self.identifier,
+                'icon': self.icon,
+            }]
+        }
+
+    def discover(self, session, entities, event):
+        '''Return true if we can handle the selected entities.
+
+        *session* is a `ftrack_api.Session` instance
+
+
+        *entities* is a list of tuples each containing the entity type and the entity id.
+        If the entity is a hierarchical you will always get the entity
+        type TypedContext, once retrieved through a get operation you
+        will have the "real" entity type ie. example Shot, Sequence
+        or Asset Build.
+
+        *event* the unmodified original event
+
+        '''
+
+        return False
 
     def _launch(self, event):
         args = self._translate_event(
