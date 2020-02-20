@@ -162,9 +162,12 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin):
                      "FTRACK_API_KEY",
                      "FTRACK_SERVER",
                      "PYPE_ROOT",
+                     "PYPE_METADATA_FILE",
                      "PYPE_STUDIO_PROJECTS_PATH",
                      "PYPE_STUDIO_PROJECTS_MOUNT"
                      ]
+                     
+    deadline_pool = ""
 
     def _submit_deadline_post_job(self, instance, job):
         """
@@ -185,7 +188,8 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin):
 
         metadata_path = os.path.normpath(metadata_path)
         mount_root = os.path.normpath(os.environ['PYPE_STUDIO_PROJECTS_MOUNT'])
-        network_root = os.path.normpath(os.environ['PYPE_STUDIO_PROJECTS_PATH'])
+        network_root = os.path.normpath(
+            os.environ['PYPE_STUDIO_PROJECTS_PATH'])
 
         metadata_path = metadata_path.replace(mount_root, network_root)
 
@@ -199,12 +203,13 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin):
                 "JobDependency0": job["_id"],
                 "UserName": job["Props"]["User"],
                 "Comment": instance.context.data.get("comment", ""),
-                "Priority": job["Props"]["Pri"]
+                "Priority": job["Props"]["Pri"],
+                "Pool": self.deadline_pool
             },
             "PluginInfo": {
                 "Version": "3.6",
                 "ScriptFile": _get_script(),
-                "Arguments": '--paths "{}"'.format(metadata_path),
+                "Arguments": "",
                 "SingleFrameOnly": "True"
             },
 
@@ -216,7 +221,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin):
         # job so they use the same environment
 
         environment = job["Props"].get("Env", {})
-
+        environment["PYPE_METADATA_FILE"] = metadata_path
         i = 0
         for index, key in enumerate(environment):
             self.log.info("KEY: {}".format(key))
@@ -254,6 +259,8 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin):
         """
         # Get a submission job
         data = instance.data.copy()
+        if hasattr(instance, "_log"):
+            data['_log'] = instance._log
         render_job = data.pop("deadlineSubmissionJob", None)
         submission_type = "deadline"
 

@@ -6,7 +6,7 @@ import pype.api
 
 
 class ExtractJpegEXR(pyblish.api.InstancePlugin):
-    """Resolve any dependency issies
+    """Resolve any dependency issues
 
     This plug-in resolves any paths which, if not updated might break
     the published file.
@@ -19,7 +19,7 @@ class ExtractJpegEXR(pyblish.api.InstancePlugin):
     label = "Extract Jpeg EXR"
     hosts = ["shell"]
     order = pyblish.api.ExtractorOrder
-    families = ["imagesequence", "render", "write", "source"]
+    families = ["imagesequence", "render", "render2d", "source"]
     enabled = False
 
     def process(self, instance):
@@ -41,8 +41,12 @@ class ExtractJpegEXR(pyblish.api.InstancePlugin):
 
         for repre in representations:
             self.log.debug(repre)
-            if 'review' not in repre['tags']:
-                return
+            valid = 'review' in repre['tags'] or "thumb-nuke" in repre['tags']
+            if not valid:
+                continue
+
+            if not isinstance(repre['files'], list):
+                continue
 
             input_file = repre['files'][0]
 
@@ -55,8 +59,8 @@ class ExtractJpegEXR(pyblish.api.InstancePlugin):
             filename = os.path.splitext(input_file)[0]
             if not filename.endswith('.'):
                 filename += "."
-            jpegFile = filename + "jpg"
-            full_output_path = os.path.join(stagingdir, jpegFile)
+            jpeg_file = filename + "jpg"
+            full_output_path = os.path.join(stagingdir, jpeg_file)
 
             self.log.info("output {}".format(full_output_path))
 
@@ -87,9 +91,9 @@ class ExtractJpegEXR(pyblish.api.InstancePlugin):
                 instance.data["representations"] = []
 
             representation = {
-                'name': 'jpg',
+                'name': 'thumbnail',
                 'ext': 'jpg',
-                'files': jpegFile,
+                'files': jpeg_file,
                 "stagingDir": stagingdir,
                 "thumbnail": True,
                 "tags": ['thumbnail']

@@ -101,6 +101,7 @@ class CollectRenderedFrames(pyblish.api.ContextPlugin):
         lut_path = None
         slate_frame = None
         families_data = None
+        baked_mov_path = None
         subset = None
         version = None
         frame_start = 0
@@ -198,6 +199,10 @@ class CollectRenderedFrames(pyblish.api.ContextPlugin):
 
             fps = data.get("fps", 25)
 
+            # adding publish comment and intent to context
+            context.data["comment"] = data.get("comment", "")
+            context.data["intent"] = data.get("intent", "")
+
             if data.get("user"):
                 context.data["user"] = data["user"]
 
@@ -206,12 +211,10 @@ class CollectRenderedFrames(pyblish.api.ContextPlugin):
 
             # Get family from the data
             families = data.get("families", ["render"])
-            if "render" not in families:
-                families.append("render")
             if "ftrack" not in families:
                 families.append("ftrack")
-            if "write" in instance_family:
-                families.append("write")
+            if families_data and "render2d" in families_data:
+                families.append("render2d")
             if families_data and "slate" in families_data:
                 families.append("slate")
 
@@ -329,7 +332,7 @@ class CollectRenderedFrames(pyblish.api.ContextPlugin):
                         "stagingDir": root,
                         "anatomy_template": "render",
                         "fps": fps,
-                        "tags": ["review"] if not baked_mov_path else [],
+                        "tags": ["review"] if not baked_mov_path else ["thumb-nuke"],
                     }
                     instance.data["representations"].append(
                         representation)
@@ -383,8 +386,8 @@ class CollectRenderedFrames(pyblish.api.ContextPlugin):
 
                     # If no start or end frame provided, get it from collection
                     indices = list(collection.indexes)
-                    start = data.get("frameStart", indices[0])
-                    end = data.get("frameEnd", indices[-1])
+                    start = int(data.get("frameStart", indices[0]))
+                    end = int(data.get("frameEnd", indices[-1]))
 
                     ext = list(collection)[0].split(".")[-1]
 
@@ -423,6 +426,8 @@ class CollectRenderedFrames(pyblish.api.ContextPlugin):
                         "name": ext,
                         "ext": "{}".format(ext),
                         "files": list(collection),
+                        "frameStart": start,
+                        "frameEnd": end,
                         "stagingDir": root,
                         "anatomy_template": "render",
                         "fps": fps,
