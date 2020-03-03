@@ -277,6 +277,11 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             'filters': filters
         }).strip()
 
+    def add_filter(self, filter):
+        if not self.filter_string:
+            self.filter_string = ""
+        self.filter_string = ":".join(self.filter_string, filter)
+
     def render(self, output, args=None, overwrite=False, **kwargs):
         """
         Render the media to a specified destination.
@@ -478,11 +483,21 @@ def burnins_from_data(
         text = value.format(**data)
         burnin.add_text(text, align, frame_start, frame_end)
 
-    codec_args = ""
+    codec_args_text = ""
     if codec_data:
-        codec_args = " ".join(codec_data)
+        codec_args = []
+        for arg in codec_args:
+            if "-vf" not in arg:
+                codec_args.append(arg)
+                continue
+            new_filter = arg.replace("-vf", "").strip(" ")
+            burnin.add_filter(new_filter)
 
-    burnin.render(output_path, args=codec_args, overwrite=overwrite, **data)
+        codec_args_text = " ".join(codec_args)
+
+    burnin.render(
+        output_path, args=codec_args_text, overwrite=overwrite, **data
+    )
 
 
 if __name__ == '__main__':
