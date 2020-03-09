@@ -242,6 +242,92 @@ def is_latest(representation):
         return False
 
 
+def are_versions_outdated(versions):
+    """ Validates if any version is not latest version of subset."""
+    subset_ids = []
+    for version in versions:
+        parent_id = version["parent"]
+        if parent_id not in subset_ids:
+            subset_ids.append(parent_id)
+
+    all_version_per_subset_sorted = io.find({
+        "parent": {"$in": subset_ids},
+        "type": "version"
+    }).sort("name", -1)
+
+    all_latest_versions_per_subset = {}
+    for version in all_version_per_subset_sorted:
+        parent_id = version["parent"]
+        if parent_id in all_latest_versions_per_subset:
+            continue
+
+        all_latest_versions_per_subset[parent_id] = version
+
+    for version in versions:
+        parent_id = version["parent"]
+        if all_latest_versions_per_subset[parent_id]["_id"] != version["_id"]:
+            return False
+    return True
+
+
+def check_loaded_containers():
+    """Return whether the current scene has any outdated content"""
+    output = {
+        "outdated": False,
+        "missing": False,
+        "deleted": False
+    }
+
+    loaded_repre_ids = []
+    host = avalon.api.registered_host()
+    for container in host.ls():
+        representation_id = container["representation"]
+        if representation_id not in loaded_repre_ids:
+            loaded_repre_ids.append(io.ObjectId(representation_id))
+
+    representation_docs = io.find({
+        "_id": {"$in": loaded_repre_ids},
+        "type": "representation"
+    })
+
+    version_ids = []
+    repres_by_id = {}
+    for repre_doc in representation_docs:
+        repres_by_id[repre_doc["_id"]] = repre_doc
+        parent_id = repre_doc["parent"]
+        if parent_id not in version_ids:
+            version_ids.append(parent_id)
+
+    # Check if any representation is missing
+    for repre_id in loaded_repre_ids:
+        if repre_id not in repres_by_id:
+            output["missing"] = True
+            break
+
+    # Query versions of found representations
+    versions = list(io.find({
+        "_id": {"$in": version_ids},
+        "type": "version"
+    }))
+
+    # Check if versions were deleted
+    deleted_versions = []
+    for version in versions:
+        version_tags = version["data"].get("tags") or []
+        if "deleted" in version_tags:
+            deleted_versions.append(version)
+
+    if len(deleted_versions) > 0:
+        output["deleted"] = True
+        for version in deleted_versions:
+            versions.remove(version)
+
+    # Check if versions are latest versions
+    output["outdated"] = are_versions_outdated(versions)
+
+    return output
+
+
 def any_outdated():
     """Return whether the current scene has any outdated content"""
 
