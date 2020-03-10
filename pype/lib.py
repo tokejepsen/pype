@@ -272,6 +272,8 @@ def are_versions_outdated(versions):
 
 def check_loaded_containers():
     """Return whether the current scene has any outdated content"""
+    # TODO check for archived_asset, archived_subset
+    # and archived_representation
     output = {
         "outdated": False,
         "missing": False,
