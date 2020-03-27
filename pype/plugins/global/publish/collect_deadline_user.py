@@ -18,7 +18,10 @@ CREATE_NO_WINDOW = 0x08000000
 def deadline_command(cmd):
     # Find Deadline
     path = os.environ.get("DEADLINE_PATH", None)
-    assert path is not None, "Variable 'DEADLINE_PATH' must be set"
+
+    if path is None:
+        return None
+        # assert path is not None, "Variable 'DEADLINE_PATH' must be set"
 
     executable = os.path.join(path, "deadlinecommand")
     if os.name == "nt":
@@ -53,7 +56,7 @@ class CollectDeadlineUser(pyblish.api.ContextPlugin):
         if not contextplugin_should_run(self, context):
             return
 
-        user = deadline_command("GetCurrentUserName").strip()
+        user = deadline_command("GetCurrentUserName")
 
         if not user:
             self.log.warning("No Deadline user found. "
@@ -61,4 +64,4 @@ class CollectDeadlineUser(pyblish.api.ContextPlugin):
             return
 
         self.log.info("Found Deadline user: {}".format(user))
-        context.data['deadlineUser'] = user
+        context.data['deadlineUser'] = user.strip()
