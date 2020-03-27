@@ -498,23 +498,21 @@ class WorkfileSettings(object):
     to Root node or to any given node.
 
     Arguments:
-        root (node): nuke's root node
-        nodes (list): list of nuke's nodes
-        nodes_filter (list): filtering classes for nodes
+        kwargs (dict): Arbitrary arguments
 
     """
+    _nodes = list()
 
-    def __init__(self,
-                 root_node=None,
-                 nodes=None,
-                 **kwargs):
-        self._project = kwargs.get(
-            "project") or io.find_one({"type": "project"})
-        self._asset = kwargs.get("asset_name") or api.Session["AVALON_ASSET"]
+    def __init__(self, **kwargs):
+        self._project_name = kwargs.get(
+            "projectName") or io.find_one({"type": "project"})["name"]
+        self._project_code = kwargs.get(
+            "projectCode") or io.find_one(
+                {"type": "project"})["data"].get("code", '')
+        self._asset = kwargs.get("asset") or api.Session["AVALON_ASSET"]
         self._asset_entity = pype.get_asset(self._asset)
-        self._root_node = root_node or nuke.root()
-        self._nodes = self.get_nodes(nodes=nodes)
-
+        self._root_node = nuke.root()
+        self._nodes = self.get_nodes()
         self.data = kwargs
 
     def get_nodes(self, nodes=None, nodes_filter=None):
@@ -834,7 +832,6 @@ class WorkfileSettings(object):
             node['frame_range'].setValue(range)
             node['frame_range_lock'].setValue(True)
 
-        # adding handle_start/end to root avalon knob
         if not avalon.nuke.imprint(self._root_node, {
             "handleStart": int(handle_start),
             "handleEnd": int(handle_end)
@@ -1043,9 +1040,6 @@ class BuildWorkfile(WorkfileSettings):
     pos_layer = 10
 
     def __init__(self,
-                 root_path=None,
-                 root_node=None,
-                 nodes=None,
                  to_script=None,
                  **kwargs):
         """
@@ -1054,10 +1048,7 @@ class BuildWorkfile(WorkfileSettings):
         A bit longer description.
 
         Argumetns:
-            root_path (str): description
-            root_node (nuke.Node): description
-            nodes (list): list of nuke.Node
-            nodes_effects (dict): dictionary with subsets
+            to_script (str): path to script to be used
 
         Example:
             nodes_effects = {
@@ -1075,33 +1066,55 @@ class BuildWorkfile(WorkfileSettings):
                     }
 
         """
-
-        WorkfileSettings.__init__(self,
-                                  root_node=root_node,
-                                  nodes=nodes,
-                                  **kwargs)
         self.to_script = to_script
+
         # collect data for formating
         self.data_tmp = {
-            "root": root_path or api.Session["AVALON_PROJECTS"],
-            "project": {"name": self._project["name"],
-                        "code": self._project["data"].get("code", '')},
-            "asset": self._asset or os.environ["AVALON_ASSET"],
+            "root": api.Session["AVALON_PROJECTS"],
+            "project": {"name": kwargs.get(
+                        "projectName") or io.find_one(
+                            {"type": "project"})["name"],
+                        "code": kwargs.get(
+                            "projectCode") or io.find_one(
+                                {"type": "project"})["data"].get("code", '')},
+            "asset": kwargs.get("asset") or os.environ["AVALON_ASSET"],
             "task": kwargs.get("task") or api.Session["AVALON_TASK"],
             "hierarchy": kwargs.get("hierarchy") or pype.get_hierarchy(),
-            "version": kwargs.get("version", {}).get("name", 1),
+            "version": kwargs.get("version", 1),
             "user": getpass.getuser(),
-            "comment": "firstBuild"
+            "comment": kwargs.get("comment", "firstBuild")
         }
 
-        # get presets from anatomy
-        anatomy = get_anatomy()
-        # format anatomy
-        anatomy_filled = anatomy.format(self.data_tmp)
+        if not self.to_script:
+            WorkfileSettings.__init__(self, **kwargs)
 
-        # get dir and file for workfile
-        self.work_dir = anatomy_filled["avalon"]["work"]
-        self.work_file = anatomy_filled["avalon"]["workfile"] + ".nk"
+            # get presets from anatomy
+            anatomy = get_anatomy()
+            # format anatomy
+            anatomy_filled = anatomy.format(self.data_tmp)
+
+            # get dir and file for workfile
+            self.work_dir = anatomy_filled["avalon"]["work"]
+            self.work_file = anatomy_filled["avalon"]["workfile"] + ".nk"
+        else:
+            self.work_dir = os.path.dirname(self.to_script)
+            self.work_file = os.path.basename(self.to_script)
+
+    def solve_plugin_paths(self):
+        """ Used in Nukestudio / Hiero """
+
+        PARENT_DIR = os.path.dirname(__file__)
+        PACKAGE_DIR = os.path.dirname(PARENT_DIR)
+        PLUGINS_DIR = os.path.join(PACKAGE_DIR, "plugins")
+
+        LOAD_PATH = os.path.join(PLUGINS_DIR, "nuke", "load")
+        CREATE_PATH = os.path.join(PLUGINS_DIR, "nuke", "create")
+
+        api.register_plugin_path(api.Loader, LOAD_PATH)
+        api.register_plugin_path(api.Creator, CREATE_PATH)
+
+        log.info("plugins_path: `{}`".format(api.registered_plugin_paths()))
+
 
     def save_script_as(self, path=None):
         # first clear anything in open window
@@ -1121,6 +1134,11 @@ class BuildWorkfile(WorkfileSettings):
 
         # save script to path
         nuke.scriptSaveAs(path)
+
+    def get_workfile_path(self):
+        return os.path.join(
+            self.work_dir,
+            self.work_file).replace("\\", "/")
 
     def process(self,
                 regex_filter=None,
@@ -1148,6 +1166,8 @@ class BuildWorkfile(WorkfileSettings):
         if not self.to_script:
             # save the script
             self.save_script_as()
+        else:
+            nuke.scriptOpen(self.to_script)
 
         # create viewer and reset frame range
         viewer = self.get_nodes(nodes_filter=["Viewer"])
@@ -1176,7 +1196,7 @@ class BuildWorkfile(WorkfileSettings):
         self.position_up(4)
 
         # set frame range for new viewer
-        self.reset_frame_range_handles()
+        # self.reset_frame_range_handles()
 
         # get all available representations
         subsets = pype.get_subsets(self._asset,
@@ -1287,13 +1307,15 @@ class BuildWorkfile(WorkfileSettings):
 
         creator_plugin = None
         for Creator in api.discover(api.Creator):
+            log.info("Creator: `{}`".format(Creator))
             if Creator.__name__ != Create_name:
                 continue
 
             creator_plugin = Creator
 
+        log.info("creator_plugin: `{}`".format(creator_plugin))
         # return api.create()
-        return creator_plugin(subset_name, self._asset).process()
+        return creator_plugin(subset_name, self.data_tmp["asset"]).process()
 
     def create_backdrop(self, label="", color=None, layer=0,
                         nodes=None):
