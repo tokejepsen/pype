@@ -10,3 +10,6 @@
 [submodule "openpype/modules/ftrack/python2_vendor/arrow"]
 	path = openpype/modules/ftrack/python2_vendor/arrow
 	url = https://github.com/arrow-py/arrow.git
+[submodule "repos/bumpybox_deployment"]
+	path = repos/bumpybox_deployment
+	url = https://github.com/bumpybox/deployment.git
