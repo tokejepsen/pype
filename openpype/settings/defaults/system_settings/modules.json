@@ -173,5 +173,9 @@
     },
     "slack": {
         "enabled": false
+    },
+    "dropbox": {
+        "enabled": false,
+        "token": ""
     }
 }

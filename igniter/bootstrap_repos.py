@@ -12,16 +12,15 @@ from typing import Union, Callable, List, Tuple
 
 from zipfile import ZipFile, BadZipFile
 
-from appdirs import user_data_dir
 from speedcopy import copyfile
 import semver
+from cloudpathlib import AnyPath
 
 from .user_settings import (
     OpenPypeSecureRegistry,
     OpenPypeSettingsRegistry
 )
-from .tools import get_openpype_path_from_db
-
+from .tools import get_openpype_path_from_db, get_user_data_dir
 
 LOG_INFO = 0
 LOG_WARNING = 1
@@ -76,7 +75,7 @@ class OpenPypeVersion(semver.VersionInfo):
 
         if kwargs.get("path"):
             if isinstance(kwargs.get("path"), str):
-                self.path = Path(kwargs.get("path"))
+                self.path = AnyPath(kwargs.get("path"))
             elif isinstance(kwargs.get("path"), Path):
                 self.path = kwargs.get("path")
             else:
@@ -233,11 +232,9 @@ class BootstrapRepos:
             message (QtCore.Signal, optional): Signal to report messages back.
 
         """
-        # vendor and app used to construct user data dir
-        self._vendor = "pypeclub"
-        self._app = "openpype"
+
         self._log = log.getLogger(str(__class__))
-        self.data_dir = Path(user_data_dir(self._app, self._vendor))
+        self.data_dir = get_user_data_dir()
         self.secure_registry = OpenPypeSecureRegistry("mongodb")
         self.registry = OpenPypeSettingsRegistry()
         self.zip_filter = [".pyc", "__pycache__"]
@@ -256,9 +253,11 @@ class BootstrapRepos:
         self._progress_callback = progress_callback
 
         if getattr(sys, "frozen", False):
-            self.live_repo_dir = Path(sys.executable).parent / "repos"
+            self.live_repo_dir = AnyPath(sys.executable).parent / "repos"
         else:
-            self.live_repo_dir = Path(Path(__file__).parent / ".." / "repos")
+            self.live_repo_dir = AnyPath(
+                AnyPath(__file__).parent / ".." / "repos"
+            )
 
     @staticmethod
     def get_version_path_from_list(version: str, version_list: list) -> Path:
@@ -281,7 +280,7 @@ class BootstrapRepos:
         """Get version of local OpenPype."""
 
         version = {}
-        path = Path(os.environ["OPENPYPE_ROOT"]) / "openpype" / "version.py"
+        path = AnyPath(os.environ["OPENPYPE_ROOT"]) / "openpype" / "version.py"
         with open(path, "r") as fp:
             exec(fp.read(), version)
         return version["__version__"]
@@ -303,7 +302,7 @@ class BootstrapRepos:
 
         """
         # try to find version
-        version_file = Path(repo_dir) / "openpype" / "version.py"
+        version_file = AnyPath(repo_dir) / "openpype" / "version.py"
         if not version_file.exists():
             return None
 
@@ -349,7 +348,7 @@ class BootstrapRepos:
         # create zip inside temporary directory.
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_zip = \
-                Path(temp_dir) / f"openpype-v{version}.zip"
+                AnyPath(temp_dir) / f"openpype-v{version}.zip"
             self._print(f"creating zip: {temp_zip}")
 
             self._create_openpype_zip(temp_zip, repo_dir.parent)
@@ -417,7 +416,7 @@ class BootstrapRepos:
             :class:`OpenPypeVersion` zip file to be installed.
 
         """
-        frozen_root = Path(sys.executable).parent
+        frozen_root = AnyPath(sys.executable).parent
 
         openpype_list = []
         for f in self.openpype_filter:
@@ -432,7 +431,7 @@ class BootstrapRepos:
         # create zip inside temporary directory.
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_zip = \
-                Path(temp_dir) / f"openpype-v{version}.zip"
+                AnyPath(temp_dir) / f"openpype-v{version}.zip"
             self._print(f"creating zip: {temp_zip}")
 
             with ZipFile(temp_zip, "w") as zip_file:
@@ -447,7 +446,7 @@ class BootstrapRepos:
                     # we need to replace first part of path which starts with
                     # something like `exe.win/linux....` with `openpype` as
                     # this is expected by OpenPype in zip archive.
-                    arc_name = Path().joinpath(*arc_name.parts[1:])
+                    arc_name = AnyPath().joinpath(*arc_name.parts[1:])
                     zip_file.write(file, arc_name)
 
             destination = self._move_zip_to_data_dir(temp_zip)
@@ -634,11 +633,11 @@ class BootstrapRepos:
             dir_to_search = openpype_path
         else:
             if os.getenv("OPENPYPE_PATH"):
-                if Path(os.getenv("OPENPYPE_PATH")).exists():
-                    dir_to_search = Path(os.getenv("OPENPYPE_PATH"))
+                if AnyPath(os.getenv("OPENPYPE_PATH")).exists():
+                    dir_to_search = AnyPath(os.getenv("OPENPYPE_PATH"))
             else:
                 try:
-                    registry_dir = Path(
+                    registry_dir = AnyPath(
                         str(self.registry.get_item("openPypePath")))
                     if registry_dir.exists():
                         dir_to_search = registry_dir
@@ -660,6 +659,24 @@ class BootstrapRepos:
         openpype_versions = sorted(list(set(openpype_versions)))
 
         return openpype_versions
+
+    def _validate_version(self, version):
+        # if file, strip extension, in case of dir not.
+        name = version.name if version.is_dir() else version.stem
+        result = OpenPypeVersion.version_in_str(name)
+        detected_version = result[1]
+
+        if version.is_dir() and not self._is_openpype_in_dir(
+            version, detected_version
+        ):
+            return False
+
+        if version.is_file() and not self._is_openpype_in_zip(
+            version, detected_version
+        ):
+            return False
+
+        return True
 
     def process_entered_location(self, location: str) -> Union[Path, None]:
         """Process user entered location string.
@@ -688,7 +705,7 @@ class BootstrapRepos:
 
         # if not successful, consider location to be fs path.
         if not openpype_path:
-            openpype_path = Path(location)
+            openpype_path = AnyPath(location)
 
         # test if this path does exist.
         if not openpype_path.exists():
@@ -709,7 +726,11 @@ class BootstrapRepos:
             self._print(f"found OpenPype in [ {openpype_path} ]")
             self._print(f"latest version found is [ {versions[-1]} ]")
 
-            return self.install_version(versions[-1])
+            # Validate versions and return latest. This is to prevent any
+            # unnecessary downloading from cloud repositories.
+            for version in reversed(versions):
+                if self._validate_version(version):
+                    return self.install_version(version)
 
         # if we got here, it means that location is "live"
         # OpenPype repository. We'll create zip from it and move it to user
@@ -857,7 +878,7 @@ class BootstrapRepos:
             self._print("Creating zip from directory ...")
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_zip = \
-                    Path(temp_dir) / f"openpype-v{openpype_version}.zip"
+                    AnyPath(temp_dir) / f"openpype-v{openpype_version}.zip"
                 self._print(f"creating zip: {temp_zip}")
 
                 self._create_openpype_zip(temp_zip, openpype_version.path)
@@ -1028,16 +1049,6 @@ class BootstrapRepos:
             if result[0]:
                 detected_version: OpenPypeVersion
                 detected_version = result[1]
-
-                if item.is_dir() and not self._is_openpype_in_dir(
-                    item, detected_version
-                ):
-                    continue
-
-                if item.is_file() and not self._is_openpype_in_zip(
-                    item, detected_version
-                ):
-                    continue
 
                 detected_version.path = item
                 if staging and detected_version.is_staging():
