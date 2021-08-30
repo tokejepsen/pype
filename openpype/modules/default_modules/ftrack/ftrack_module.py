@@ -1,7 +1,6 @@
 import os
 import json
 import collections
-import openpype
 from openpype.modules import OpenPypeModule
 
 from openpype_interfaces import (
