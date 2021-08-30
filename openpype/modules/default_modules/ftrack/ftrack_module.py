@@ -356,3 +356,14 @@ class FtrackModule(
     def set_credentials_to_env(self, username, api_key):
         os.environ["FTRACK_API_USER"] = username or ""
         os.environ["FTRACK_API_KEY"] = api_key or ""
+
+    def get_task_time(self, project_name, asset_name, task_name):
+        session = self.create_ftrack_session()
+        query = (
+            'Task where name is "{}"'
+            ' and parent.name is "{}"'
+            ' and project.full_name is "{}"'
+        ).format(task_name, asset_name, project_name)
+        task_entity = session.query(query).one()
+        hours_logged = (task_entity["time_logged"] / 60) / 60
+        return hours_logged
