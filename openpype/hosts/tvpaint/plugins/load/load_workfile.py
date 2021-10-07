@@ -50,9 +50,7 @@ class LoadWorkfile(pipeline.Loader):
             "task": context["task"],
             "version": 1,
             "user": getpass.getuser(),
-            "root": {
-                template_key: anatomy.roots[template_key]
-            },
+            "root": anatomy.roots,
             "hierarchy": openpype.lib.get_hierarchy()
         }
         template = anatomy.templates[template_key]["file"]
@@ -72,7 +70,7 @@ class LoadWorkfile(pipeline.Loader):
             data, anatomy.templates[template_key]["folder"]
         )
         version = api.last_workfile_with_version(
-            work_root, template, data, [data["ext"]]
+            work_root, template, data, host.file_extensions()
         )[1]
 
         if version is None:
