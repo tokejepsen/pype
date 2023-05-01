@@ -314,6 +314,22 @@
             "extensions": [
                 ".mov"
             ]
+        },
+        "TranscodeCreator": {
+            "presets": {
+                "prores422HQ": {
+                    "arguments": "-c:v prores_ks -profile:v 3 -pix_fmt yuv422p10le -qscale:v 5 -codec:a pcm_s16le",
+                    "output_extension": "mov"
+                },
+                "proresProxy": {
+                    "arguments": "-c:v prores_ks -profile:v 0 -pix_fmt yuv422p10le -qscale:v 5 -codec:a pcm_s16le -vf scale=trunc(oh*a/2)*2:trunc(ih/2)",
+                    "output_extension": "mov"
+                },
+                "h264": {
+                    "arguments": "-crf 18 -pix_fmt yuv420p",
+                    "output_extension": "mov"
+                }
+            }
         }
     },
     "publish": {

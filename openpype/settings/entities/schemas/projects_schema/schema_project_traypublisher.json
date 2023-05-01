@@ -334,6 +334,37 @@
                             "object_type": "text"
                         }
                     ]
+                },
+                {
+                    "type": "dict",
+                    "collapsible": true,
+                    "key": "TranscodeCreator",
+                    "label": "Transcode Creator",
+                    "collapsible_key": true,
+                    "children": [
+                        {
+                            "key": "presets",
+                            "label": "Presets",
+                            "type": "dict-modifiable",
+                            "highlight_content": true,
+                            "collapsible": false,
+                            "object_type": {
+                                "type": "dict",
+                                "children": [
+                                    {
+                                        "key": "arguments",
+                                        "label": "Arguments",
+                                        "type": "text"
+                                    },
+                                    {
+                                        "key": "output_extension",
+                                        "label": "Output Extension",
+                                        "type": "text"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         },
