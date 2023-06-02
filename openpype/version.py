@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 """Package declaring Pype version."""
-__version__ = "3.15.6-bumpybox20230526153427"
+__version__ = "3.15.6-bumpybox20230529163805"
