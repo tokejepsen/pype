@@ -18,14 +18,13 @@ from openpype.pipeline import (
 )
 from openpype.pipeline.load import any_outdated_containers
 from openpype.hosts.houdini import HOUDINI_HOST_DIR
-from openpype.hosts.houdini.api import lib, shelves
+from openpype.hosts.houdini.api import lib, shelves, creator_node_shelves
 
 from openpype.lib import (
     register_event_callback,
     emit_event,
 )
 
-from .lib import get_asset_fps
 
 log = logging.getLogger("openpype.hosts.houdini")
 
@@ -81,9 +80,19 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         # TODO: make sure this doesn't trigger when
         #       opening with last workfile.
         _set_context_settings()
-        shelves.generate_shelves()
 
-    def has_unsaved_changes(self):
+        if not IS_HEADLESS:
+            import hdefereval  # noqa, hdefereval is only available in ui mode
+            # Defer generation of shelves due to issue on Windows where shelf
+            # initialization during start up delays Houdini UI by minutes
+            # making it extremely slow to launch.
+            hdefereval.executeDeferred(shelves.generate_shelves)
+
+        if not IS_HEADLESS:
+            import hdefereval # noqa, hdefereval is only available in ui mode
+            hdefereval.executeDeferred(creator_node_shelves.install)
+
+    def workfile_has_unsaved_changes(self):
         return hou.hipFile.hasUnsavedChanges()
 
     def get_workfile_extensions(self):
@@ -374,11 +383,6 @@ def _set_context_settings():
     Returns:
         None
     """
-
-    # Set new scene fps
-    fps = get_asset_fps()
-    print("Setting scene FPS to %i" % fps)
-    lib.set_scene_fps(fps)
 
     lib.reset_framerange()
 

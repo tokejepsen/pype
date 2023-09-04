@@ -4,11 +4,14 @@ import logging
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.client import get_last_version_by_subset_id
 from openpype import style
-from openpype.pipeline import legacy_io
+from openpype.client import get_last_version_by_subset_id
+from openpype.pipeline import get_current_project_name
 from openpype.tools.utils.lib import qt_app_context
-from openpype.hosts.maya.api.lib import assign_look_by_version
+from openpype.hosts.maya.api.lib import (
+    assign_look_by_version,
+    get_main_window
+)
 
 from maya import cmds
 # old api for MFileIO
@@ -213,7 +216,7 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
         selection = self.assign_selected.isChecked()
         asset_nodes = self.asset_outliner.get_nodes(selection=selection)
 
-        project_name = legacy_io.active_project()
+        project_name = get_current_project_name()
         start = time.time()
         for i, (asset, item) in enumerate(asset_nodes.items()):
 
@@ -250,7 +253,7 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
                     if vp in nodes:
                         vrayproxy_assign_look(vp, subset_name)
 
-                nodes = list(set(item["nodes"]).difference(vray_proxies))
+                nodes = list(set(nodes).difference(vray_proxies))
             else:
                 self.echo(
                     "Could not assign to VRayProxy because vrayformaya plugin "
@@ -260,16 +263,17 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
             # Assign Arnold Standin look.
             if cmds.pluginInfo("mtoa", query=True, loaded=True):
                 arnold_standins = set(cmds.ls(type="aiStandIn", long=True))
+
                 for standin in arnold_standins:
                     if standin in nodes:
                         arnold_standin.assign_look(standin, subset_name)
+
+                nodes = list(set(nodes).difference(arnold_standins))
             else:
                 self.echo(
                     "Could not assign to aiStandIn because mtoa plugin is not "
                     "loaded."
                 )
-
-            nodes = list(set(item["nodes"]).difference(arnold_standins))
 
             # Assign look
             if nodes:
@@ -296,9 +300,7 @@ def show():
         pass
 
     # Get Maya main window
-    top_level_widgets = QtWidgets.QApplication.topLevelWidgets()
-    mainwindow = next(widget for widget in top_level_widgets
-                      if widget.objectName() == "MayaWindow")
+    mainwindow = get_main_window()
 
     with qt_app_context():
         window = MayaLookAssignerWindow(parent=mainwindow)

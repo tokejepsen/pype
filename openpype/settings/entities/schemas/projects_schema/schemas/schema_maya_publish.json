@@ -103,7 +103,7 @@
                 },
                 {
                     "key": "exclude_families",
-                    "label": "Families",
+                    "label": "Exclude Families",
                     "type": "list",
                     "object_type": "text"
                 }
@@ -125,6 +125,11 @@
                     "type": "boolean",
                     "key": "optional",
                     "label": "Optional"
+                },
+                {
+                    "type": "boolean",
+                    "key": "active",
+                    "label": "Active"
                 },
                 {
                     "type": "label",
