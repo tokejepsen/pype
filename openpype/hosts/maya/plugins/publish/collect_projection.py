@@ -6,7 +6,6 @@ from bson.objectid import ObjectId
 import pymel.core as pc
 
 import pyblish.api
-from avalon import io
 
 
 class CollectProjection(pyblish.api.InstancePlugin):

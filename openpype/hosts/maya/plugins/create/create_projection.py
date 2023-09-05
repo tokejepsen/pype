@@ -1,9 +1,10 @@
-import avalon.maya
+from openpype.hosts.maya.api import (
+    lib,
+    plugin
+)
 
-from pype.hosts.maya import lib
 
-
-class CreateProjection(avalon.maya.Creator):
+class CreateProjection(plugin.Creator):
     """Geometry with projected texture."""
 
     name = "projection"
