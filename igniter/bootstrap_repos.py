@@ -25,7 +25,8 @@ from .user_settings import (
 from .tools import (
     get_openpype_global_settings,
     get_openpype_path_from_settings,
-    get_expected_studio_version_str
+    get_expected_studio_version_str,
+    get_local_openpype_path_from_settings
 )
 
 
@@ -48,15 +49,13 @@ def sanitize_long_path(path):
     """
     if platform.system().lower() != "windows":
         return path
+    path = os.path.abspath(path)
+
+    if path.startswith("\\\\"):
+        path = "\\\\?\\UNC\\" + path[2:]
     else:
-        path = os.path.abspath(path)
-
-        if path.startswith("\\\\"):
-            path = "\\\\?\\UNC\\" + path[2:]
-        else:
-            path = "\\\\?\\" + path
-
-        return path
+        path = "\\\\?\\" + path
+    return path
 
 
 def sha256sum(filename):
@@ -79,7 +78,6 @@ def sha256sum(filename):
 
 
 class ZipFileLongPaths(ZipFile):
-
     def _extract_member(self, member, targetpath, pwd):
         return ZipFile._extract_member(
             self, member, sanitize_long_path(targetpath), pwd
@@ -94,6 +92,8 @@ class OpenPypeVersion(semver.VersionInfo):
 
     """
     path = None
+
+    _local_openpype_path = None
     # this should match any string complying with https://semver.org/
     _VERSION_REGEX = re.compile(r"(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>[a-zA-Z\d\-.]*))?(?:\+(?P<buildmetadata>[a-zA-Z\d\-.]*))?")  # noqa: E501
     _installed_version = None
@@ -323,6 +323,23 @@ class OpenPypeVersion(semver.VersionInfo):
         return os.getenv("OPENPYPE_PATH")
 
     @classmethod
+    def get_local_openpype_path(cls):
+        """Path to unzipped versions.
+
+        By default it should be user appdata, but could be overridden by
+        settings.
+        """
+        if cls._local_openpype_path:
+            return cls._local_openpype_path
+
+        settings = get_openpype_global_settings(os.environ["OPENPYPE_MONGO"])
+        data_dir = get_local_openpype_path_from_settings(settings)
+        if not data_dir:
+            data_dir = Path(user_data_dir("openpype", "pypeclub"))
+        cls._local_openpype_path = data_dir
+        return data_dir
+
+    @classmethod
     def openpype_path_is_set(cls):
         """Path to OpenPype zip directory is set."""
         if cls.get_openpype_path():
@@ -352,9 +369,8 @@ class OpenPypeVersion(semver.VersionInfo):
             list: of compatible versions available on the machine.
 
         """
-        # DEPRECATED: backwards compatible way to look for versions in root
-        dir_to_search = Path(user_data_dir("openpype", "pypeclub"))
-        versions = OpenPypeVersion.get_versions_from_directory(dir_to_search)
+        dir_to_search = cls.get_local_openpype_path()
+        versions = cls.get_versions_from_directory(dir_to_search)
 
         return list(sorted(set(versions)))
 
@@ -566,17 +582,15 @@ class BootstrapRepos:
 
         """
         # vendor and app used to construct user data dir
-        self._vendor = "pypeclub"
-        self._app = "openpype"
+        self._message = message
         self._log = log.getLogger(str(__class__))
-        self.data_dir = Path(user_data_dir(self._app, self._vendor))
+        self.set_data_dir(None)
         self.secure_registry = OpenPypeSecureRegistry("mongodb")
         self.registry = OpenPypeSettingsRegistry()
         self.zip_filter = [".pyc", "__pycache__"]
         self.openpype_filter = [
             "openpype", "schema", "LICENSE"
         ]
-        self._message = message
 
         # dummy progress reporter
         def empty_progress(x: int):
@@ -586,6 +600,13 @@ class BootstrapRepos:
         if not progress_callback:
             progress_callback = empty_progress
         self._progress_callback = progress_callback
+
+    def set_data_dir(self, data_dir):
+        if not data_dir:
+            self.data_dir = Path(user_data_dir("openpype", "pypeclub"))
+        else:
+            self._print(f"overriding local folder: {data_dir}")
+            self.data_dir = data_dir
 
     @staticmethod
     def get_version_path_from_list(
