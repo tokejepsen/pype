@@ -18,7 +18,7 @@ class AudioLoader(load.LoaderPlugin):
     """Specific loader of audio."""
 
     families = ["audio"]
-    label = "Import audio"
+    label = "Load audio"
     representations = ["wav"]
     icon = "volume-up"
     color = "orange"
@@ -27,7 +27,7 @@ class AudioLoader(load.LoaderPlugin):
 
         start_frame = cmds.playbackOptions(query=True, min=True)
         sound_node = cmds.sound(
-            file=context["representation"]["data"]["path"], offset=start_frame
+            file=self.filepath_from_context(context), offset=start_frame
         )
         cmds.timeControl(
             mel.eval("$gPlayBackSlider=$gPlayBackSlider"),
@@ -70,6 +70,7 @@ class AudioLoader(load.LoaderPlugin):
         cmds.setAttr("{}.filename".format(audio_node), path, type="string")
 
         if activate_sound:
+            # maya by default deactivates it from timeline on file change
             cmds.timeControl(
                 mel.eval("$gPlayBackSlider=$gPlayBackSlider"),
                 edit=True,
