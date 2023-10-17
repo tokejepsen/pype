@@ -2110,7 +2110,7 @@ class WorkfileSettings(object):
             # skip empty values
             if not value_:
                 continue
-            if self._root_node[knob].value() not in value_:
+            if self._root_node[knob].value() != value_:
                 self._root_node[knob].setValue(str(value_))
                 log.debug("nuke.root()['{}'] changed to: {}".format(
                     knob, value_))
@@ -2833,9 +2833,10 @@ def select_nodes(nodes):
     """Selects all inputted nodes
 
     Arguments:
-        nodes (list): nuke nodes to be selected
+        nodes (Union[list, tuple, set]): nuke nodes to be selected
     """
-    assert isinstance(nodes, (list, tuple)), "nodes has to be list or tuple"
+    assert isinstance(nodes, (list, tuple, set)), \
+        "nodes has to be list, tuple or set"
 
     for node in nodes:
         node["selected"].setValue(True)
