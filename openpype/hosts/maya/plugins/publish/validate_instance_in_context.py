@@ -38,6 +38,9 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
 
+        if instance.data.get("family") == "shot":
+            return
+
         message = (
             "Instance '{}' publishes to a different {} than current context: "
             "{}. Current context: {}"
