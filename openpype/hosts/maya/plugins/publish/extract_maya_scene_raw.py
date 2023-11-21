@@ -10,14 +10,15 @@ from openpype.pipeline import AVALON_CONTAINER_ID, publish
 
 
 def offset_node(node, offset):
-    if cmds.nodeType(node).startswith("animCurve"):
+    node_type = cmds.nodeType(node)
+    if node_type.startswith("animCurve"):
         cmds.keyframe(node, edit=True, relative=True, timeChange=offset)
 
-    if cmds.nodeType(node) == "imagePlane":
+    elif node_type == "imagePlane":
         node_attr = node + ".frameOffset"
         cmds.setAttr(node_attr, cmds.getAttr(node_attr) + (-offset))
 
-    if cmds.nodeType(node) == "timeSliderBookmark":
+    elif node_type == "timeSliderBookmark":
         for attr in ["timeRangeStart", "timeRangeStop"]:
             node_attr = "{}.{}".format(node, attr)
             cmds.setAttr(node_attr, cmds.getAttr(node_attr) + offset)
@@ -30,9 +31,7 @@ def offset_scene(offset):
         yield
         return
 
-    nodes = cmds.ls(type="animCurve")
-    nodes += cmds.ls(type="imagePlane")
-    nodes += cmds.ls(type="timeSliderBookmark")
+    nodes = cmds.ls(type=("animCurve", "imagePlane", "timeSliderBookmark")
     changed_nodes = []
     try:
         for node in nodes:
