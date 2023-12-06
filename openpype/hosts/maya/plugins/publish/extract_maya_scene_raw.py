@@ -114,7 +114,7 @@ def maintain_timeline(frame_start, frame_end, handle_start, handle_end):
         cmds.setAttr("defaultRenderGlobals.endFrame", render_end_frame)
 
 
-class ExtractMayaSceneRaw(publish.Extractor):
+class ExtractMayaSceneRaw(publish.Extractor, OpenPypePyblishPluginMixin):
     """Extract as Maya Scene (raw).
 
     This will preserve all references, construction history, etc.
