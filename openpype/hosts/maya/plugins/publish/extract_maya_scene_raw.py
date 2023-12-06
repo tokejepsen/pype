@@ -7,6 +7,8 @@ from maya import cmds
 
 from openpype.hosts.maya.api.lib import maintained_selection
 from openpype.pipeline import AVALON_CONTAINER_ID, publish
+from openpype.pipeline.publish import OpenPypePyblishPluginMixin
+from openpype.lib import BoolDef
 
 
 def offset_node(node, offset):
@@ -128,6 +130,16 @@ class ExtractMayaSceneRaw(publish.Extractor):
                 "shot"]
     scene_type = "ma"
 
+    @classmethod
+    def get_attribute_defs(cls):
+        return [
+            BoolDef(
+                "preserve_references",
+                label="Preserve References",
+                default=True
+            )
+        ]
+
     def process(self, instance):
         """Plugin entry point."""
         ext_mapping = (
@@ -183,11 +195,12 @@ class ExtractMayaSceneRaw(publish.Extractor):
             ]
             self.log.debug("Updating timeline to {}.".format(frame_range))
 
+        attribute_values = self.get_attr_values_from_data(instance.data)
         kwargs = {
             "force": True,
             "typ": "mayaAscii" if self.scene_type == "ma" else "mayaBinary",
             "exportSelected": True,
-            "preserveReferences": True,
+            "preserveReferences": attribute_values["preserve_references"],
             "constructionHistory": True,
             "shader": True,
             "constraints": True,
