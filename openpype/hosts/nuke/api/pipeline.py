@@ -129,8 +129,6 @@ class NukeHost(
         register_event_callback("workio.open_file", check_inventory_versions)
         register_event_callback("taskChanged", change_context_label)
 
-        _install_menu()
-
         # add script menu
         add_scripts_menu()
         add_scripts_gizmo()
@@ -138,6 +136,19 @@ class NukeHost(
         add_nuke_callbacks()
 
         launch_workfiles_app()
+
+        # Need to defer the menu creation to when the Root is created due to this error on older Nuke versions.
+        # A Python exception occurred:
+        # exceptions.AttributeError: 'PySide2.QtWidgets.QWidget' object has no attribute 'statusBar'
+        #  File "C:\Program Files\Nuke11.0v4\pythonextensions\site-packages\hiero\ui\nuke_bridge\initNuke.py", line 2, in <module>
+        #    import hiero.ui.nuke_bridge.FnNukeApplication as FnNukeApplication
+        #  File "C:\Program Files\Nuke11.0v4\pythonextensions\site-packages\hiero\ui\nuke_bridge\FnNukeApplication.py", line 12, in <module>
+        #    import hiero.ui.FnStatusBar
+        #  File "C:\Program Files\Nuke11.0v4\pythonextensions\site-packages\hiero\ui\FnStatusBar.py", line 252, in <module>
+        #    hiero.ui.mainStatusBar = MainStatusBar()
+        #  File "C:\Program Files\Nuke11.0v4\pythonextensions\site-packages\hiero\ui\FnStatusBar.py", line 67, in __init__
+        #    self.bar = hiero.ui.mainWindow().statusBar()
+        nuke.addOnCreate(_install_menu, nodeClass="Root")
 
     def get_context_data(self):
         root_node = nuke.root()
@@ -231,6 +242,7 @@ def _install_menu():
 
     # uninstall original avalon menu
     main_window = get_main_window()
+
     menubar = nuke.menu("Nuke")
     menu = menubar.addMenu(MENU_LABEL)
 

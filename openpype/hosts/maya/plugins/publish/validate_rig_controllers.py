@@ -88,7 +88,8 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
             # check if visibility is locked
             attribute = "{}.visibility".format(control)
             locked = cmds.getAttr(attribute, lock=True)
-            if not locked:
+            referenced = cmds.referenceQuery(control, isNodeReferenced=True)
+            if not locked and not referenced:
                 has_unlocked_visibility.append(control)
 
             if cls.get_non_default_attributes(control):
@@ -205,7 +206,10 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
                 # Lock visibility
                 attr = "{}.visibility".format(control)
                 locked = cmds.getAttr(attr, lock=True)
-                if not locked:
+                referenced = cmds.referenceQuery(
+                    control, isNodeReferenced=True
+                )
+                if not locked and not referenced:
                     cls.log.info("Locking visibility for %s" % control)
                     cmds.setAttr(attr, lock=True)
 

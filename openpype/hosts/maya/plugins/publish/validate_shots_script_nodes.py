@@ -17,10 +17,15 @@ class ValidateShotsSceneConfigurationScriptNode(
     order = ValidateContentsOrder
     label = "Shots Scene Configuration Script Node"
     hosts = ["maya"]
-    families = ["shot"]
     optional = True
 
     def process(self, context):
+        for instance in context:
+            if instance.data["family"] == "shot":
+                break
+
+            return
+
         if not cmds.objExists("sceneConfigurationScriptNode"):
             raise PublishValidationError(
                 message=(

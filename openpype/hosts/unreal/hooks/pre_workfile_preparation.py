@@ -145,6 +145,8 @@ class UnrealPrelaunchHook(PreLaunchHook):
                                           "Failed to generate the project!")
 
     def execute(self):
+        return
+
         """Hook entry method."""
         workdir = self.launch_context.env["AVALON_WORKDIR"]
         executable = str(self.launch_context.executable)

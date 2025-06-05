@@ -35,9 +35,13 @@ class ExtractFBXAnimation(publish.Extractor):
         fbx_exporter = fbx.FBXExtractor(log=self.log)
         out_members = instance.data.get("animated_skeleton", [])
         # Export
-        instance.data["constraints"] = True
+        instance.data["constraints"] = False
         instance.data["skeletonDefinitions"] = True
         instance.data["referencedAssetsContent"] = True
+        instance.data["shapes"] = False
+        instance.data["skins"] = False
+        instance.data["inputConnections"] = False
+        instance.data["lights"] = False
         fbx_exporter.set_options_from_instance(instance)
         # Export from the rig's namespace so that the exported
         # FBX does not include the namespace but preserves the node

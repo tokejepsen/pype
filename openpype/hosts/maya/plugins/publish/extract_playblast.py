@@ -241,6 +241,33 @@ class ExtractPlayblast(publish.Extractor):
                     "we found collection of interest {}".format(
                         str(frame_collection)))
 
+        # Account for negative frame numbers.
+        frame_collection.indexes.clear()
+        frame_collection.indexes.update([x for x in range(start, end + 1)])
+        self.log.info(frame_collection)
+
+        # Discard handle start frames.
+        #This should be optional.
+        handle_start = instance.data["handleStart"]
+        handle_start_frames = [x for x in range(start, start + handle_start)]
+        handle_start_collection = clique.Collection(
+            head=collection.head,
+            tail=collection.tail,
+            padding=collection.padding
+        )
+        handle_start_collection.indexes.update(handle_start_frames)
+
+        for filename in handle_start_collection:
+            os.remove(os.path.join(stagingdir, filename))
+
+        indexes = frame_collection.indexes - set(handle_start_frames)
+        frame_collection.indexes.clear()
+        frame_collection.indexes.update(indexes)
+        self.log.info(frame_collection)
+
+        start += handle_start
+        instance.data["handleStart"] = 0 #Maybe this can be handle on the representation alone?
+
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
@@ -268,3 +295,4 @@ class ExtractPlayblast(publish.Extractor):
             "camera_name": camera_node_name
         }
         instance.data["representations"].append(representation)
+        self.log.info(representation)

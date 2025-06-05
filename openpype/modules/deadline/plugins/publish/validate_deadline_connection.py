@@ -15,6 +15,10 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
     responses = {}
 
     def process(self, instance):
+        # Deadline connection is validated even when rendering locally.
+        if "render.local" in instance.data["families"]:
+            return
+
         # get default deadline webservice url from deadline module
         deadline_url = instance.context.data["defaultDeadline"]
         # if custom one is set in instance, use that

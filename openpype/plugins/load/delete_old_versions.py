@@ -230,27 +230,6 @@ class DeleteOldVersions(load.SubsetLoaderPlugin):
         for version in all_last_versions:
             versions.remove(version)
 
-        # Update versions_by_parent without filtered versions
-        versions_by_parent = collections.defaultdict(list)
-        for ent in versions:
-            versions_by_parent[ent["parent"]].append(ent)
-
-        # Filter already deleted versions
-        versions_to_pop = []
-        for version in versions:
-            version_tags = version["data"].get("tags")
-            if version_tags and "deleted" in version_tags:
-                versions_to_pop.append(version)
-
-        for version in versions_to_pop:
-            msg = "Asset: \"{}\" | Subset: \"{}\" | Version: \"{}\"".format(
-                asset["name"], subset["name"], version["name"]
-            )
-            self.log.debug((
-                "Skipping version. Already tagged as `deleted`. < {} >"
-            ).format(msg))
-            versions.remove(version)
-
         version_ids = [ent["_id"] for ent in versions]
 
         self.log.debug(
@@ -276,6 +255,9 @@ class DeleteOldVersions(load.SubsetLoaderPlugin):
         dir_paths = {}
         file_paths_by_dir = collections.defaultdict(list)
         for repre in repres:
+            template = repre["data"]["template"]
+            template = template.replace("{root}", "{root[work]}")
+            repre["data"]["template"] = template
             file_path, seq_path = self.path_from_representation(repre, anatomy)
             if file_path is None:
                 self.log.debug((

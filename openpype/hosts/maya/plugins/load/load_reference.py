@@ -130,6 +130,10 @@ class ReferenceLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
         if not attach_to_root:
             group_name = namespace
 
+        # Reference into the root namespace.
+        if options.get("root_namespace", False):
+            namespace = ":"
+
         kwargs = {}
         if "file_options" in options:
             kwargs["options"] = options["file_options"]
@@ -238,6 +242,46 @@ class ReferenceLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
         # reference or for a camera which might have changed names.
         members = get_container_members(container)
         self._lock_camera_transforms(members)
+        """Needs to be limited to rig family only.
+        print(container)
+        if context["representation"]["context"]["family"] != "rig":
+            return
+
+        #This needs better code for switch assets.
+        # Update animation instance with required objectsets.
+        animation_set = None
+        object_sets = cmds.ls(members, exactType="objectSet")
+        for node in object_sets:
+            sets = cmds.listSets(object=node) or []
+            for set in sets:
+                if set.startswith("animation"):
+                    animation_set = set
+                    break
+
+            if animation_set:
+                break
+
+        msg = "Animation instance for rig '{}' is missing.".format(
+            container["namespace"]
+        )
+        assert animation_set is not None, msg
+
+        animation_rig_sets = {}
+        names = [
+            "controls_SET", "out_SET", "skeletonMesh_SET", "skeletonAnim_SET"
+        ]
+        for node in object_sets:
+            for name in names:
+                if node.endswith(name):
+                    animation_rig_sets[name] = node
+                    cmds.sets(node, add=animation_set)
+
+        msg = "Could not find all the animation rig sets for '{}':\n{}".format(
+            container["namespace"],
+            animation_rig_sets
+        )
+        assert len(animation_rig_sets.keys()) == 4, msg
+        """
 
     def _post_process_rig(self, namespace, context, options):
 

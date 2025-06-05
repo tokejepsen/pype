@@ -33,6 +33,9 @@ class ExtractAlembic(publish.Extractor):
 
         nodes, roots = self.get_members_and_roots(instance)
 
+        if not roots:
+            return
+
         # Collect the start and end including handles
         start = float(instance.data.get("frameStartHandle", 1))
         end = float(instance.data.get("frameEndHandle", 1))
@@ -62,7 +65,8 @@ class ExtractAlembic(publish.Extractor):
             "writeFaceSets": instance.data.get("writeFaceSets", False),
             "uvWrite": True,
             "selection": True,
-            "worldSpace": instance.data.get("worldSpace", True)
+            "worldSpace": instance.data.get("worldSpace", True),
+            "stripNamespaces": True
         }
 
         if not instance.data.get("includeParentHierarchy", True):
@@ -160,6 +164,9 @@ class ExtractAnimation(ExtractAlembic):
                                "{0}".format(out_sets))
         out_set = out_sets[0]
         roots = cmds.sets(out_set, query=True)
+
+        if roots is None:
+            return [], []
 
         # Include all descendants
         nodes = roots + cmds.listRelatives(roots,

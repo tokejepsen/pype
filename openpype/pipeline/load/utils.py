@@ -643,6 +643,10 @@ def get_representation_path(representation, root=None, dbcon=None):
         except KeyError:
             return None
 
+        # Legacy code when loading/updating to 3.0 pipeline assets.
+        if "{root}" in template:
+            template = template.replace("{root}", "{root[work]}")
+
         try:
             context = representation["context"]
             context["root"] = root

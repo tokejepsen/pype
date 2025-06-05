@@ -5,7 +5,7 @@ import contextlib
 
 from maya import cmds
 
-from openpype.hosts.maya.api.lib import maintained_selection
+from openpype.hosts.maya.api.lib import maintained_selection, suspended_refresh
 from openpype.pipeline import AVALON_CONTAINER_ID, publish
 from openpype.pipeline.publish import OpenPypePyblishPluginMixin
 from openpype.lib import BoolDef
@@ -209,6 +209,7 @@ class ExtractMayaSceneRaw(publish.Extractor, OpenPypePyblishPluginMixin):
         self.log.debug("Exporting with:\n{}".format(kwargs))
         with (maintained_selection(),
               offset_scene(frame_offset),
+              suspended_refresh(),
               maintain_timeline(*frame_range)
               ):
             cmds.select(selection, noExpand=True)

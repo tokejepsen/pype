@@ -681,6 +681,13 @@ class ReferenceLoader(Loader):
             default=True,
             help="Should a group be created to encapsulate"
                  " imported representation ?"
+        ),
+        qargparse.Boolean(
+            "root_namespace",
+            label="Root Namespace",
+            default=False,
+            help="This option will reference into the root namespace, meaning "
+            "the nodes will not have a namespace in their names."
         )
     ]
 
