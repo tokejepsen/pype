@@ -2,7 +2,10 @@ import os
 
 from maya import cmds
 
-from openpype.pipeline import publish
+from openpype.pipeline import (
+    publish,
+    OptionalPyblishPluginMixin,
+)
 from openpype.hosts.maya.api.lib import (
     extract_alembic,
     suspended_refresh,
@@ -11,7 +14,8 @@ from openpype.hosts.maya.api.lib import (
 )
 
 
-class ExtractAlembic(publish.Extractor):
+class ExtractAlembic(publish.Extractor,
+                     OptionalPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
@@ -25,8 +29,12 @@ class ExtractAlembic(publish.Extractor):
     hosts = ["maya"]
     families = ["pointcache", "model", "vrayproxy.alembic"]
     targets = ["local", "remote"]
+    optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         if instance.data.get("farm"):
             self.log.debug("Should be processed on farm, skipping.")
             return
