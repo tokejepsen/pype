@@ -81,7 +81,7 @@ class ExtractFBXAnimation(publish.Extractor):
             relative_names=True
         ) as namespace:
             fbx_exporter.export(relative_out_members, path)
-        
+
         cmds.playbackOptions(minTime=start_frame, maxTime=end_frame)
 
         representations = instance.data.setdefault("representations", [])
