@@ -34,6 +34,14 @@ class ExtractFBXAnimation(publish.Extractor):
 
         fbx_exporter = fbx.FBXExtractor(log=self.log)
         out_members = instance.data.get("animated_skeleton", [])
+
+        start_frame = int(
+            cmds.playbackOptions(query=True,animationStartTime=True)
+        )
+        end_frame = int(
+            cmds.playbackOptions(query=True, animationEndTime=True)
+        )
+
         # Export
         instance.data["constraints"] = False
         instance.data["skeletonDefinitions"] = True
@@ -43,6 +51,13 @@ class ExtractFBXAnimation(publish.Extractor):
         instance.data["inputConnections"] = False
         instance.data["lights"] = False
         fbx_exporter.set_options_from_instance(instance)
+
+        # Need to set the playback range to export range. This needs
+        # to be investigated later to be part of the fbx export options.
+        start = (instance.data.get("frameStartHandle") or instance.context.data.get("frameStartHandle"))
+        end = (instance.data.get("frameEndHandle") or instance.context.data.get("frameEndHandle"))
+        cmds.playbackOptions(minTime=start, maxTime=end)
+
         # Export from the rig's namespace so that the exported
         # FBX does not include the namespace but preserves the node
         # names as existing in the rig workfile
@@ -66,6 +81,8 @@ class ExtractFBXAnimation(publish.Extractor):
             relative_names=True
         ) as namespace:
             fbx_exporter.export(relative_out_members, path)
+        
+        cmds.playbackOptions(minTime=start_frame, maxTime=end_frame)
 
         representations = instance.data.setdefault("representations", [])
         representations.append({
