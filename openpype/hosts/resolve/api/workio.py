@@ -88,8 +88,7 @@ def current_file():
     current_file_path = os.path.join(workdir_path, file_name)
 
     # return current file path if it exists
-    if os.path.exists(current_file_path):
-        return os.path.normpath(current_file_path)
+    return os.path.normpath(current_file_path)
 
 
 def work_root(session):

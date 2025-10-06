@@ -21,7 +21,10 @@ from openpype.host import (
 )
 
 from . import lib
-from .utils import get_resolve_module
+from .utils import (
+    get_resolve_module,
+    set_resolve_module
+)
 from .workio import (
     open_file,
     save_file,
@@ -44,6 +47,7 @@ AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
 class ResolveHost(HostBase, IWorkfileHost, ILoadHost):
     name = "resolve"
+    _app = None
 
     def install(self):
         """Install resolve-specific functionality of avalon-core.
@@ -70,7 +74,32 @@ class ResolveHost(HostBase, IWorkfileHost, ILoadHost):
         pyblish.register_callback("instanceToggled",
                                   on_pyblish_instance_toggled)
 
-        get_resolve_module()
+        # DaVinci Resolve version >= 20
+        # Set api resolve modules from undocumented injected cached app.
+        # https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=113252
+        try:
+            bmdvf = self._app
+            bmdvr = self._app.GetResolve()
+
+            if not bmdvr:
+                raise RuntimeError("Expecting valid Resolve module from app.")
+
+            set_resolve_module(bmdvr, bmdvf)
+
+        # If any issue, default to DaVinci Resolve Studio mechanism.
+        except Exception as error:
+            log.info(
+                "Could not gather resolve apps from cached entry point %r. "
+                "Default to DaVinci Resolve Studio specific logic.",
+                error,
+            )
+            get_resolve_module()
+
+    @classmethod
+    def set_resolve_modules_from_app(cls, app):
+        """ Cache injected entry point "app" as class variable for re-use.
+        """
+        cls._app = app
 
     def open_workfile(self, filepath):
         return open_file(filepath)

@@ -52,6 +52,8 @@ class OpenPypeMenu(QtWidgets.QWidget):
         self.setWindowTitle("OpenPype")
         save_current_btn = QtWidgets.QPushButton("Save current file", self)
         workfiles_btn = QtWidgets.QPushButton("Workfiles ...", self)
+        # Temporary disable buttons while not fully tested.
+        """
         create_btn = QtWidgets.QPushButton("Create ...", self)
         publish_btn = QtWidgets.QPushButton("Publish ...", self)
         load_btn = QtWidgets.QPushButton("Load ...", self)
@@ -68,6 +70,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
         # reset_resolution_btn = QtWidgets.QPushButton(
         #     "Set Resolution from presets", self
         # )
+        """
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(10, 20, 10, 20)
@@ -77,6 +80,8 @@ class OpenPypeMenu(QtWidgets.QWidget):
         layout.addWidget(Spacer(15, self))
 
         layout.addWidget(workfiles_btn)
+        # Temporary disable buttons while not fully tested.
+        """
         layout.addWidget(create_btn)
         layout.addWidget(publish_btn)
         layout.addWidget(load_btn)
@@ -97,12 +102,15 @@ class OpenPypeMenu(QtWidgets.QWidget):
         # layout.addWidget(reset_resolution_btn)
         layout.addWidget(Spacer(15, self))
         layout.addWidget(experimental_btn)
+        """
 
         self.setLayout(layout)
 
         save_current_btn.clicked.connect(self.on_save_current_clicked)
         save_current_btn.setShortcut(QtGui.QKeySequence.Save)
         workfiles_btn.clicked.connect(self.on_workfile_clicked)
+        # Temporary disable buttons while not fully tested.
+        """
         create_btn.clicked.connect(self.on_create_clicked)
         publish_btn.clicked.connect(self.on_publish_clicked)
         load_btn.clicked.connect(self.on_load_clicked)
@@ -113,6 +121,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
         # set_colorspace_btn.clicked.connect(self.on_set_colorspace_clicked)
         # reset_resolution_btn.clicked.connect(self.on_set_resolution_clicked)
         experimental_btn.clicked.connect(self.on_experimental_clicked)
+        """
 
     def on_save_current_clicked(self):
         host = registered_host()
@@ -168,7 +177,10 @@ class OpenPypeMenu(QtWidgets.QWidget):
 
 
 def launch_pype_menu():
-    app = QtWidgets.QApplication(sys.argv)
+    app = (
+        QtWidgets.QApplication.instance()
+        or QtWidgets.QApplication(sys.argv)
+    )
 
     pype_menu = OpenPypeMenu()
 

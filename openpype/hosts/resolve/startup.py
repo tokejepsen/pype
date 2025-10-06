@@ -16,6 +16,11 @@ import openpype.hosts.resolve.api
 log = Logger.get_logger(__name__)
 
 
+# Undocumented app variable is injected by Resolve automatically
+# https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=113252
+app: object   # noqa: F821
+
+
 def ensure_installed_host():
     """Install resolve host with openpype and return the registered host.
 
@@ -26,6 +31,11 @@ def ensure_installed_host():
     host = registered_host()
     if host:
         return host
+
+    # Register injected "app" variable at class level for future uses.
+    # For free version of DaVinci Resolve, this seems to be
+    # the only way to gather the Resolve/Fusion applications.
+    openpype.hosts.resolve.api.ResolveHost.set_resolve_modules_from_app(app)  # noqa: F821
 
     host = openpype.hosts.resolve.api.ResolveHost()
     install_host(host)
@@ -60,6 +70,7 @@ def main():
     project_name = get_current_project_name()
     log.info(f"Current project name in context: {project_name}")
 
+    # Launch OpenPype menu
     settings = get_project_settings(project_name)
     if settings.get("resolve", {}).get("launch_openpype_menu_on_start", True):
         log.info("Launching OpenPype menu..")

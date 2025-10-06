@@ -17,7 +17,7 @@ def get_resolve_module():
     # dont run if already loaded
     if api.bmdvr:
         log.info(("resolve module is assigned to "
-                  f"`openpype.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
+                  f"`ayon_resolve.api.bmdvr`: {api.bmdvr}"))
         return api.bmdvr
     try:
         """
@@ -75,9 +75,18 @@ def get_resolve_module():
     # assign global var and return
     bmdvr = bmd.scriptapp("Resolve")
     bmdvf = bmd.scriptapp("Fusion")
-    api.bmdvr = bmdvr
-    api.bmdvf = bmdvf
+    set_resolve_module(bmdvr, bmdvf)
+
+
+def set_resolve_module(resolve_app, fusion_app):
+    """ Set Fusion and Resolve app as public api modules.
+    """
+    from openpype.hosts.resolve import api
+
+    api.bmdvr = resolve_app
+    api.bmdvf = fusion_app
+
     log.info(("Assigning resolve module to "
-              f"`openpype.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
+              f"`ayon_resolve.api.bmdvr`: {api.bmdvr}"))
     log.info(("Assigning resolve module to "
-              f"`openpype.hosts.resolve.api.bmdvf`: {api.bmdvf}"))
+              f"`ayon_resolve.api.bmdvf`: {api.bmdvf}"))
