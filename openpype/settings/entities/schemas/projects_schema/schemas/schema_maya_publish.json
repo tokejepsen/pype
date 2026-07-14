@@ -1005,6 +1005,16 @@
                     "label": "Families",
                     "type": "list",
                     "object_type": "text"
+                },
+                {
+                    "type": "boolean",
+                    "key": "bake_animation_layers",
+                    "label": "Bake animation layers"
+                },
+                {
+                    "type": "boolean",
+                    "key": "export_selected_strict",
+                    "label": "Export Selected Strict"
                 }
             ]
         },

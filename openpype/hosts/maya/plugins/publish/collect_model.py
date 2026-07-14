@@ -20,7 +20,10 @@ class CollectModelData(pyblish.api.InstancePlugin):
     families = ["model"]
 
     def process(self, instance):
-        # Extract only current frame (override)
-        frame = cmds.currentTime(query=True)
+        # Extract only current frame (override) or use extractAt if specified
+        frame = instance.data.get("extractAt", int(cmds.currentTime(query=True)))
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
+        instance.data["frameStartHandle"] = frame
+        instance.data["frameEndHandle"] = frame
+        self.log.info("Setting to frame: {}".format(frame))

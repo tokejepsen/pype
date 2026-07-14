@@ -222,3 +222,29 @@ def get_last_version_from_path(path_dir, filter):
         return filtred_files[-1]
 
     return None
+
+
+def to_unc_path(path):
+    """
+    Converts a standard Windows path to a UNC path with the \\\\?\\ prefix
+    if the path exceeds the MAX_PATH (260 character) limit.
+
+    Args:
+        path (str): The input path.
+
+    Returns:
+        str: The UNC path if it exceeds the limit, otherwise the original path.
+    """
+    if os.name == 'nt':  # Check if the operating system is Windows
+        # Windows API's MAX_PATH limit is 260 characters
+        if len(path) >= 260:
+            # Add the \\?\ prefix. This requires an absolute path.
+            path = os.path.abspath(path)
+            # Check for existing prefixes and remove if needed to avoid duplication
+            if path.startswith('\\\\?\\'):
+                return path
+            # For network paths (UNC), use \\?\UNC\
+            if path.startswith('\\\\'):
+                return '\\\\?\\UNC\\' + path[2:]
+            return '\\\\?\\' + path
+    return path

@@ -43,7 +43,7 @@ def parse_layers_data(data):
             layer_id, group_id, visible, position, opacity, name,
             layer_type,
             frame_start, frame_end, prelighttable, postlighttable,
-            selected, editable, sencil_state, is_current
+            selected, editable, sencil_state, is_current, density
         ) = layer_raw.split("|")
         layer = {
             "layer_id": int(layer_id),
@@ -52,6 +52,7 @@ def parse_layers_data(data):
             "position": int(position),
             # Opacity from 'tv_layerinfo' is always set to '0' so it's unusable
             # "opacity": int(opacity),
+            "density": int(density),
             "name": name,
             "type": layer_type,
             "frame_start": int(frame_start),
@@ -95,11 +96,18 @@ def get_layers_data_george_script(output_filepath, layer_ids=None):
         "is_current=1",
         "selected=1",
         "END",
+        # Get layer density (requires layer to be active)
+        # tv_layerdensity with no args sets density to 0 and returns old value,
+        # so restore it immediately after reading
+        "tv_layerset layer_id",
+        "tv_layerdensity",
+        "density = result",
+        "tv_layerdensity density",
         # Prepare line with data separated by "|"
         (
             "line = layer_id'|'group_id'|'visible'|'position'|'opacity'|'"
             "name'|'type'|'startFrame'|'endFrame'|'prelighttable'|'"
-            "postlighttable'|'selected'|'editable'|'sencilState'|'is_current"
+            "postlighttable'|'selected'|'editable'|'sencilState'|'is_current'|'density"
         ),
         # Write data to output file
         "tv_writetextfile \"strict\" \"append\" '\"'output_path'\"' line",
@@ -122,12 +130,16 @@ def get_layers_data_george_script(output_filepath, layer_ids=None):
             "ELSE",
             *layer_data_getter,
             "END",
-            "END"
+            "END",
+            # Restore the original active layer
+            "tv_layerset current_layer_id"
         ))
     else:
         for layer_id in layer_ids:
             george_script_lines.append("layer_id = {}".format(layer_id))
             george_script_lines.extend(layer_data_getter)
+        # Restore the original active layer
+        george_script_lines.append("tv_layerset current_layer_id")
 
     return "\n".join(george_script_lines)
 
@@ -305,6 +317,83 @@ def get_layers_pre_post_behavior(layer_ids, communicator=None):
             "pre": pre_beh.lower(),
             "post": post_beh.lower()
         }
+    return output
+
+
+def get_layers_blend_modes(layer_ids, communicator=None):
+    """Collect blend modes for given layer ids.
+
+    Returns blend mode names in lowercase as returned by George API.
+
+    Example output:
+    ```json
+    {
+        0: "color",
+        1: "multiply",
+        2: "screen"
+    }
+    ```
+
+    Args:
+        layer_ids (list): Ids of layers for which blend modes should be
+            collected.
+        communicator (BaseCommunicator): Communicator used for communication
+            with TVPaint.
+
+    Returns:
+        dict: Key is layer id, value is blend mode name (lowercase).
+    """
+    # Skip if is empty
+    if not layer_ids:
+        return {}
+
+    # Auto convert to list
+    if not isinstance(layer_ids, (list, set, tuple)):
+        layer_ids = [layer_ids]
+
+    # Prepare temp file
+    output_file = tempfile.NamedTemporaryFile(
+        mode="w", prefix="a_tvp_", suffix=".txt", delete=False
+    )
+    output_file.close()
+
+    output_filepath = output_file.name.replace("\\", "/")
+    george_script_lines = [
+        # Variable containing full path to output file
+        "output_path = \"{}\"".format(output_filepath),
+    ]
+    for layer_id in layer_ids:
+        george_script_lines.extend([
+            "layer_id = {}".format(layer_id),
+            "tv_layerset layer_id",
+            "tv_layerblendingmode",
+            "blend_mode = result",
+            "line = layer_id'|'blend_mode",
+            "tv_writetextfile \"strict\" \"append\" '\"'output_path'\"' line"
+        ])
+
+    george_script = "\n".join(george_script_lines)
+    execute_george_through_file(george_script, communicator)
+
+    # Read data
+    with open(output_filepath, "r") as stream:
+        data = stream.read()
+
+    # Remove temp file
+    os.remove(output_filepath)
+
+    # Parse data
+    output = {}
+    raw_lines = data.split("\n")
+    for raw_line in raw_lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = line.split("|")
+        if len(parts) != 2:
+            continue
+        layer_id, blend_mode = parts
+        output[int(layer_id)] = blend_mode.lower()
     return output
 
 

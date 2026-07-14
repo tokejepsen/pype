@@ -310,6 +310,15 @@ class ShotMetadataSolver:
         if self.shot_rename["enabled"]:
             shot_name = self._rename_template(formatting_data)
             self.log.info(f"Renamed shot name: {shot_name}")
+        else:
+            shot_prefix = ""
+            for p in parents:
+                if p["entity_type"] == "Project":
+                    continue
+
+                shot_prefix += p["entity_name"] + "_"
+
+            shot_name = shot_prefix + clip_name
 
         if self.shot_hierarchy["enabled"]:
             parents = self._create_parents_from_settings(

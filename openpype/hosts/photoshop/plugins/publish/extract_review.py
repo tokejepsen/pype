@@ -117,8 +117,12 @@ class ExtractReview(publish.Extractor):
                 no_of_frames,
                 source_files_pattern,
                 staging_dir)
+            instance.data["frameStart"] = 1
+            instance.data["frameEnd"] = no_of_frames
 
         self.log.info(f"Extracted {instance} to {staging_dir}")
+
+        self.log.info(instance.data["subset"])
 
     def _prepare_file_for_image_family(self, img_file, instance, staging_dir):
         """Converts existing file for image family to .jpg
@@ -153,12 +157,12 @@ class ExtractReview(publish.Extractor):
             shutil.copy(source_file_path,
                         os.path.join(staging_dir, img_file))
 
-    def _generate_mov(self, ffmpeg_path, instance, fps, no_of_frames,
+    def _generate_mov(self, ffmpeg_args, instance, fps, no_of_frames,
                       source_files_pattern, staging_dir):
         """Generates .mov to upload to Ftrack.
 
         Args:
-            ffmpeg_path (str): path to ffmpeg
+            ffmpeg_args (list): list of ffmpeg command arguments
             instance (Pyblish Instance)
             fps (str)
             no_of_frames (int):
@@ -170,8 +174,7 @@ class ExtractReview(publish.Extractor):
         # Generate mov.
         mov_path = os.path.join(staging_dir, "review.mov")
         self.log.info(f"Generate mov review: {mov_path}")
-        args = [
-            ffmpeg_path,
+        args = ffmpeg_args + [
             "-y",
             "-i", source_files_pattern,
             "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
@@ -179,7 +182,7 @@ class ExtractReview(publish.Extractor):
             mov_path
         ]
         self.log.debug("mov args:: {}".format(args))
-        _output = run_subprocess(args)
+        run_subprocess(args)
         instance.data["representations"].append({
             "name": "mov",
             "ext": "mov",
@@ -215,7 +218,7 @@ class ExtractReview(publish.Extractor):
             thumbnail_path
         ]
         self.log.debug("thumbnail args:: {}".format(args))
-        _output = run_subprocess(args)
+        run_subprocess(args)
         instance.data["representations"].append({
             "name": "thumbnail",
             "ext": "jpg",
@@ -304,8 +307,10 @@ class ExtractReview(publish.Extractor):
         stub = photoshop.stub()
 
         list_img_filename = []
+        # Sort layers alphabetically by their name attribute
+        sorted_layers = sorted(layers, key=lambda l: getattr(l, "name", str(l)))
         with photoshop.maintained_visibility():
-            for i, layer in enumerate(layers):
+            for i, layer in enumerate(sorted_layers):
                 self.log.info("Extracting {}".format(layer))
 
                 img_filename = self.output_seq_filename % i

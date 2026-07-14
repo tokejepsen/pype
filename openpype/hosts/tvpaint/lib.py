@@ -515,18 +515,7 @@ def fill_reference_frames(frame_references, filepaths_by_frame):
         src_filepath = filepaths_by_frame[ref_idx]
         dst_filepath = filepaths_by_frame[frame_idx]
 
-        if hasattr(os, "link"):
-            os.link(src_filepath, dst_filepath)
-        else:
-            shutil.copy(src_filepath, dst_filepath)
-
-
-def copy_render_file(src_path, dst_path):
-    """Create copy file of an image."""
-    if hasattr(os, "link"):
-        os.link(src_path, dst_path)
-    else:
-        shutil.copy(src_path, dst_path)
+        shutil.copy(src_filepath, dst_filepath)
 
 
 def cleanup_rendered_layers(filepaths_by_layer_id):
@@ -567,12 +556,16 @@ def composite_rendered_layers(
             source filepaths.
         cleanup(bool): Remove all source filepaths when done with compositing.
     """
-    # Prepare layers by their position
+    # Prepare layers by their position and build density lookup
     #   - position tells in which order will compositing happen
     layer_ids_by_position = {}
+    density_by_layer_id = {}
     for layer in layers_data:
         layer_position = layer["position"]
-        layer_ids_by_position[layer_position] = layer["layer_id"]
+        layer_id = layer["layer_id"]
+        layer_ids_by_position[layer_position] = layer_id
+        # Default to 100 if density is not available
+        density_by_layer_id[layer_id] = layer.get("density", 100)
 
     # Sort layer positions
     sorted_positions = tuple(reversed(sorted(layer_ids_by_position.keys())))
@@ -583,15 +576,16 @@ def composite_rendered_layers(
     first_dst_filepath = None
     for frame_idx in range(range_start, range_end + 1):
         dst_filepath = dst_filepaths_by_frame[frame_idx]
-        src_filepaths = []
+        src_filepaths_and_densities = []
         for layer_position in sorted_positions:
             layer_id = layer_ids_by_position[layer_position]
             filepaths_by_frame = filepaths_by_layer_id[layer_id]
             src_filepath = filepaths_by_frame.get(frame_idx)
             if src_filepath is not None:
-                src_filepaths.append(src_filepath)
+                density = density_by_layer_id[layer_id]
+                src_filepaths_and_densities.append((src_filepath, density))
 
-        if not src_filepaths:
+        if not src_filepaths_and_densities:
             transparent_filepaths.add(dst_filepath)
             continue
 
@@ -599,15 +593,28 @@ def composite_rendered_layers(
         if first_dst_filepath is None:
             first_dst_filepath = dst_filepath
 
-        if len(src_filepaths) == 1:
-            src_filepath = src_filepaths[0]
-            if cleanup:
-                os.rename(src_filepath, dst_filepath)
+        if len(src_filepaths_and_densities) == 1:
+            src_filepath, density = src_filepaths_and_densities[0]
+            # Apply density if not at full opacity
+            if density < 100:
+                img_obj = Image.open(src_filepath)
+                if img_obj.mode == "RGBA":
+                    # Split RGBA channels
+                    r, g, b, a = img_obj.split()
+                    # Scale alpha channel by density
+                    a_scaled = a.point(lambda x: round(x * density / 100))
+                    # Merge back
+                    img_obj = Image.merge("RGBA", (r, g, b, a_scaled))
+                img_obj.save(dst_filepath)
+                if cleanup:
+                    os.remove(src_filepath)
             else:
-                copy_render_file(src_filepath, dst_filepath)
-
+                if cleanup:
+                    os.rename(src_filepath, dst_filepath)
+                else:
+                    shutil.copy(src_filepath, dst_filepath)
         else:
-            composite_images(src_filepaths, dst_filepath)
+            composite_images(src_filepaths_and_densities, dst_filepath)
 
     # Store first transparent filepath to be able copy it
     transparent_filepath = None
@@ -618,29 +625,46 @@ def composite_rendered_layers(
             )
             transparent_filepath = dst_filepath
         else:
-            copy_render_file(transparent_filepath, dst_filepath)
+            shutil.copy(transparent_filepath, dst_filepath)
 
     # Remove all files that were used as source for compositing
     if cleanup:
         cleanup_rendered_layers(filepaths_by_layer_id)
 
 
-def composite_images(input_image_paths, output_filepath):
-    """Composite images in order from passed list.
+def composite_images(input_image_paths_and_densities, output_filepath):
+    """Composite images in order from passed list with density applied to alpha.
+
+    Args:
+        input_image_paths_and_densities (list): List of tuples (filepath, density)
+            where density is 0-100.
+        output_filepath (str): Path to save the composited result.
 
     Raises:
         ValueError: When entered list is empty.
     """
-    if not input_image_paths:
+    if not input_image_paths_and_densities:
         raise ValueError("Nothing to composite.")
 
     img_obj = None
-    for image_filepath in input_image_paths:
+    for image_filepath, density in input_image_paths_and_densities:
         _img_obj = Image.open(image_filepath)
+        # Apply density to alpha channel if not at full opacity
+        if density < 100 and _img_obj.mode == "RGBA":
+            # Split RGBA channels
+            r, g, b, a = _img_obj.split()
+            # Scale alpha channel by density
+            a_scaled = a.point(lambda x: round(x * density / 100))
+            # Merge back
+            _img_obj = Image.merge("RGBA", (r, g, b, a_scaled))
+
         if img_obj is None:
             img_obj = _img_obj
         else:
             img_obj.alpha_composite(_img_obj)
+
+    # img_obj is guaranteed to be non-None due to ValueError check above
+    assert img_obj is not None
     img_obj.save(output_filepath)
 
 

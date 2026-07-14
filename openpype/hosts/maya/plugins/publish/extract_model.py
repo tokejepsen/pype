@@ -68,28 +68,33 @@ class ExtractModel(publish.Extractor,
                           noIntermediate=True,
                           long=True)
 
-        with lib.no_display_layers(instance):
-            with lib.displaySmoothness(members,
-                                       divisionsU=0,
-                                       divisionsV=0,
-                                       pointsWire=4,
-                                       pointsShaded=1,
-                                       polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
-                    with lib.maintained_selection():
-                        cmds.select(members, noExpand=True)
-                        cmds.file(path,
-                                  force=True,
-                                  typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                                  exportSelected=True,
-                                  preserveReferences=False,
-                                  channels=False,
-                                  constraints=False,
-                                  expressions=False,
-                                  constructionHistory=False)
+        with lib.maintained_time():
+            frame = instance.data.get("extractAt", instance.data.get("frameStart", int(cmds.currentTime(query=True))))
+            self.log.info("Setting current time to frame: {}".format(frame))
+            cmds.currentTime(frame, edit=True)
 
-                        # Store reference for integration
+            with lib.no_display_layers(instance):
+                with lib.displaySmoothness(members,
+                                           divisionsU=0,
+                                           divisionsV=0,
+                                           pointsWire=4,
+                                           pointsShaded=1,
+                                           polygonObject=1):
+                    with lib.shader(members,
+                                    shadingEngine="initialShadingGroup"):
+                        with lib.maintained_selection():
+                            cmds.select(members, noExpand=True)
+                            cmds.file(path,
+                                      force=True,
+                                      typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                                      exportSelected=True,
+                                      preserveReferences=False,
+                                      channels=False,
+                                      constraints=False,
+                                      expressions=False,
+                                      constructionHistory=False)
+
+                            # Store reference for integration
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

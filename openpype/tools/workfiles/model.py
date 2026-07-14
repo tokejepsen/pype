@@ -14,6 +14,7 @@ from openpype.style import (
     get_disabled_entity_icon_color,
 )
 from openpype.pipeline import get_representation_path
+from openpype.lib.path_tools import to_unc_path
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
     def set_root(self, root):
         """Change directory where to look for file."""
         self._root = root
-        if root and not os.path.exists(root):
+        if root and not os.path.exists(to_unc_path(root)):
             log.debug("Work Area does not exist: {}".format(root))
         self.refresh()
 
@@ -92,7 +93,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         """Refresh and update model items."""
         root_item = self.invisibleRootItem()
         # If path is not set or does not exist then add invalid path item
-        if not self._root or not os.path.exists(self._root):
+        if not self._root or not os.path.exists(to_unc_path(self._root)):
             self._clear()
             # Add Work Area does not exist placeholder
             item = self._get_invalid_path_item()
@@ -119,7 +120,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             if ext not in self._file_extensions:
                 continue
 
-            modified = os.path.getmtime(filepath)
+            modified = os.path.getmtime(to_unc_path(filepath))
 
             # Use existing item or create new one
             if filename in items_to_remove:
@@ -392,12 +393,14 @@ class PublishFilesModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 self._items_by_id[repre_id] = item
 
-            if os.path.exists(filepath):
-                modified = os.path.getmtime(filepath)
+            if os.path.exists(to_unc_path(filepath)):
+                modified = os.path.getmtime(to_unc_path(filepath))
                 tooltip = None
                 self._set_item_valid(item)
             else:
                 modified = None
+                print(filepath)
+                print(to_unc_path(filepath))
                 tooltip = "File is not available from this machine"
                 self._set_item_invalid(item)
 

@@ -389,6 +389,9 @@ or updating already created. Publishing will create OTIO file.
         media_data = self._get_media_source_metadata(media_path)
 
         for track in tracks:
+            if track.kind == otio.schema.TrackKind.Audio:
+                continue
+
             track.name = f"{sequence_file_name} - {otio_timeline.name}"
             try:
                 track_start_frame = (
@@ -419,7 +422,6 @@ or updating already created. Publishing will create OTIO file.
                     "instance_label": None,
                     "instance_id": None
                 }
-
                 for _fpreset in family_presets:
                     # exclude audio family if no audio stream
                     if (

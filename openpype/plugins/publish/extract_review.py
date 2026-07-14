@@ -353,7 +353,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             temp_data = self.prepare_temp_data(instance, repre, output_def)
             files_to_clean = []
-            if temp_data["input_is_sequence"]:
+            if temp_data["input_is_sequence"] and not instance.data.get("explicitFrames", []):
                 self.log.debug("Checking sequence to fill gaps in sequence..")
                 files_to_clean = self.fill_sequence_gaps(
                     files=temp_data["origin_repre"]["files"],
@@ -535,6 +535,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "pixel_aspect": instance.data.get("pixelAspect", 1),
             "resolution_width": instance.data.get("resolutionWidth"),
             "resolution_height": instance.data.get("resolutionHeight"),
+            "review_width": instance.data.get("reviewWidth"),
+            "review_height": instance.data.get("reviewHeight"),
+            "review_width_set": "reviewWidth" in instance.data,
+            "review_height_set": "reviewHeight" in instance.data,
             "origin_repre": repre,
             "input_is_sequence": input_is_sequence,
             "first_sequence_frame": first_sequence_frame,
@@ -623,68 +627,57 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if layer_name:
             ffmpeg_input_args.extend(["-layer", layer_name])
 
+        concat_file_path = None
         if temp_data["input_is_sequence"]:
-            # Set start frame of input sequence (just frame in filename)
-            # - definition of input filepath
-            # - add handle start if output should be without handles
-            start_number = temp_data["first_sequence_frame"]
-            if temp_data["without_handles"] and temp_data["handles_are_set"]:
-                start_number += temp_data["handle_start"]
+            # Use FFmpeg concat demuxer for all image sequences
+            concat_file_path = self._write_concat_file(temp_data)
             ffmpeg_input_args.extend([
-                "-start_number", str(start_number)
+                "-f", "concat",
+                "-safe", "0"
             ])
 
-            # TODO add fps mapping `{fps: fraction}` ?
-            # - e.g.: {
-            #     "25": "25/1",
-            #     "24": "24/1",
-            #     "23.976": "24000/1001"
-            # }
-            # Add framerate to input when input is sequence
-            ffmpeg_input_args.extend([
-                "-framerate", str(temp_data["fps"])
-            ])
-            # Add duration of an input sequence if output is video
-            if not temp_data["output_is_sequence"]:
-                ffmpeg_input_args.extend([
-                    "-to", "{:0.10f}".format(duration_seconds)
-                ])
-
-        if temp_data["output_is_sequence"]:
-            # Set start frame of output sequence (just frame in filename)
-            # - this is definition of an output
+        # Handle output framerate and frame ranges based on input type
+        if temp_data["input_is_sequence"]:
+            # For concat demuxer, set output framerate to ensure correct speed
             ffmpeg_output_args.extend([
-                "-start_number", str(temp_data["output_frame_start"])
+                "-r", str(temp_data["fps"])
             ])
-
-        # Change output's duration and start point if should not contain
-        # handles
-        if temp_data["without_handles"] and temp_data["handles_are_set"]:
-            # Set output duration in seconds
+        elif temp_data["without_handles"] and temp_data["handles_are_set"]:
+            # For non-sequence inputs with handles, trim duration
             ffmpeg_output_args.extend([
                 "-t", "{:0.10}".format(duration_seconds)
             ])
 
-            # Add -ss (start offset in seconds) if input is not sequence
-            if not temp_data["input_is_sequence"]:
-                start_sec = float(temp_data["handle_start"]) / temp_data["fps"]
-                # Set start time without handles
-                # - Skip if start sec is 0.0
-                if start_sec > 0.0:
-                    ffmpeg_input_args.extend([
-                        "-ss", "{:0.10f}".format(start_sec)
-                    ])
-
-        # Set frame range of output when input or output is sequence
+            # Add -ss (start offset in seconds) for video inputs
+            start_sec = float(temp_data["handle_start"]) / temp_data["fps"]
+            # Set start time without handles - Skip if start sec is 0.0
+            if start_sec > 0.0:
+                ffmpeg_input_args.extend([
+                    "-ss", "{:0.10f}".format(start_sec)
+                ])
         elif temp_data["output_is_sequence"]:
+            # For image sequence outputs, set frame count
             ffmpeg_output_args.extend([
                 "-frames:v", str(output_frames_len)
             ])
 
+        # For non-sequence outputs, set start number
+        if not temp_data["input_is_sequence"] and temp_data["output_is_sequence"]:
+            ffmpeg_output_args.extend([
+                "-start_number", str(temp_data["output_frame_start"])
+            ])
+
         # Add video/image input path
-        ffmpeg_input_args.extend([
-            "-i", path_to_subprocess_arg(temp_data["full_input_path"])
-        ])
+        if temp_data["input_is_sequence"]:
+            # For concat demuxer, input is the concat file
+            ffmpeg_input_args.extend([
+                "-i", path_to_subprocess_arg(concat_file_path)
+            ])
+        else:
+            # For non-sequence inputs, use the direct path
+            ffmpeg_input_args.extend([
+                "-i", path_to_subprocess_arg(temp_data["full_input_path"])
+            ])
 
         # Add audio arguments if there are any. Skipped when output are images.
         if not temp_data["output_ext_is_image"] and temp_data["with_audio"]:
@@ -879,6 +872,47 @@ class ExtractReview(pyblish.api.InstancePlugin):
             added_files.append(hole_fpath)
 
         return added_files
+
+    def _write_concat_file(self, temp_data):
+        """Create a concat demuxer file for image sequence input.
+
+        Uses clique to assemble the files and determine sorted frame indexes.
+        Writes a concat_list.txt file that FFmpeg can use with the concat
+        demuxer to stitch images into a video.
+
+        Args:
+            temp_data (dict): Temporary data containing origin representation
+                and FPS information.
+
+        Returns:
+            str: Path to the generated concat_list.txt file.
+        """
+        repre = temp_data["origin_repre"]
+        staging_dir = repre["stagingDir"]
+        fps = temp_data["fps"]
+        duration_per_frame = 1.0 / fps
+
+        # Use clique to assemble the sequence and get sorted frame indexes
+        cols, _ = clique.assemble(repre["files"])
+        if len(cols) != 1:
+            raise KnownPublishError(
+                "Multiple collections {} found.".format(cols))
+        col = cols[0]
+        col_format = col.format("{head}{padding}{tail}")
+        sorted_frames = list(sorted(col.indexes))
+
+        # Write the concat demuxer file
+        concat_file_path = os.path.join(staging_dir, "concat_list.txt")
+        with open(concat_file_path, "w") as f:
+            for frame_num in sorted_frames:
+                filename = col_format % frame_num
+                frame_path = os.path.join(staging_dir, filename)
+                # Convert backslashes to forward slashes for FFmpeg
+                frame_path = frame_path.replace("\\", "/")
+                f.write("file '{}'\n".format(frame_path))
+                f.write("duration {}\n".format(duration_per_frame))
+
+        return concat_file_path
 
     def input_output_paths(self, new_repre, output_def, temp_data):
         """Deduce input nad output file paths based on entered data.
@@ -1267,11 +1301,22 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # NOTE Setting only one of `width` or `heigth` is not allowed
         # - settings value can't have None but has value of 0
-        output_width = output_def.get("width") or output_width or None
-        output_height = output_def.get("height") or output_height or None
-        # Force to use input resolution if output resolution was not defined
-        #   in settings. Resolution from instance is not used when
-        #   'use_input_res' is set to 'True'.
+        # Instance reviewWidth/reviewHeight overrides profile resolution when both are set.
+        # Setting both to None explicitly skips profile and uses input resolution.
+        review_width = temp_data["review_width"]
+        review_height = temp_data["review_height"]
+        if temp_data["review_width_set"] and temp_data["review_height_set"]:
+            # User explicitly set review dimensions (even if None)
+            if review_width is not None and review_height is not None:
+                # Both have actual values - override profile
+                output_width = review_width
+                output_height = review_height
+            # else: at least one is None - skip profile, use input resolution (output_width/height stay None)
+        else:
+            # Not explicitly set - use profile
+            output_width = output_def.get("width") or output_width or None
+            output_height = output_def.get("height") or output_height or None
+        # Force to use input resolution if output resolution was not defined.
         use_input_res = False
 
         # Overscan color
@@ -1334,14 +1379,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         self.log.debug("input_width: `{}`".format(input_width))
         self.log.debug("input_height: `{}`".format(input_height))
 
-        # Use instance resolution if output definition has not set it
-        #   - use instance resolution only if there were not scale changes
-        #       that may massivelly affect output 'use_input_res'
-        if not use_input_res and output_width is None or output_height is None:
-            output_width = temp_data["resolution_width"]
-            output_height = temp_data["resolution_height"]
-
-        # Use source's input resolution instance does not have set it.
+        # Use source's input resolution if nothing else has set it.
         if output_width is None or output_height is None:
             self.log.debug("Using resolution from input.")
             output_width = input_width

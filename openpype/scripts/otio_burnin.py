@@ -672,8 +672,12 @@ def burnins_from_data(
         data["fps"] = convert_ffprobe_fps_value(r_frame_rate)
 
     # Check frame start and add expression if is available
+    # If current_frame is a non-empty list (from explicitFrames), preserve it.
+    # An empty list falls back to the FFmpeg native per-frame expression.
     if frame_start is not None:
-        data[CURRENT_FRAME_KEY[1:-1]] = CURRENT_FRAME_SPLITTER
+        current_frame_val = data.get(CURRENT_FRAME_KEY[1:-1])
+        if not isinstance(current_frame_val, list) or not current_frame_val:
+            data[CURRENT_FRAME_KEY[1:-1]] = CURRENT_FRAME_SPLITTER
 
     if frame_start_tc is not None:
         data[TIMECODE_KEY[1:-1]] = TIMECODE_KEY

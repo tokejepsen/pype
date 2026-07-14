@@ -1374,8 +1374,13 @@ class CreateContext:
             phase.
     """
 
+    # Class-level plugin discovery caches (shared across instances in the same session)
+    _cached_publish_discover_result = None
+    _cached_creator_classes = None
+    _cached_convertor_classes = None
+
     def __init__(
-        self, host, headless=False, reset=True, discover_publish_plugins=True
+        self, host, headless=False, reset=True, discover_publish_plugins=True, reset_plugins=True
     ):
         self.host = host
 
@@ -1448,7 +1453,10 @@ class CreateContext:
 
         # Trigger reset if was enabled
         if reset:
-            self.reset(discover_publish_plugins)
+            self.reset(
+                discover_publish_plugins=discover_publish_plugins,
+                reset_plugins=reset_plugins
+            )
 
     @property
     def instances(self):
@@ -1626,7 +1634,7 @@ class CreateContext:
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
-    def reset(self, discover_publish_plugins=True):
+    def reset(self, discover_publish_plugins=True, system_settings=None, project_settings=None, reset_plugins=True):
         """Reset context with all plugins and instances.
 
         All changes will be lost if were not saved explicitely.
@@ -1635,7 +1643,12 @@ class CreateContext:
         self.reset_preparation()
 
         self.reset_current_context()
-        self.reset_plugins(discover_publish_plugins)
+        self.reset_plugins(
+            discover_publish_plugins=discover_publish_plugins,
+            system_settings=system_settings,
+            project_settings=project_settings,
+            reset_plugins=reset_plugins
+        )
         self.reset_context_data()
 
         with self.bulk_instances_collection():
@@ -1732,21 +1745,31 @@ class CreateContext:
 
         self._current_project_anatomy = None
 
-    def reset_plugins(self, discover_publish_plugins=True):
+    def reset_plugins(self, discover_publish_plugins=True, system_settings=None, project_settings=None, reset_plugins=True):
         """Reload plugins.
 
         Reloads creators from preregistered paths and can load publish plugins
         if it's enabled on context.
+
+        Args:
+            discover_publish_plugins (bool): Discover publish plugins during reset.
+            system_settings (Union[dict, None]): Pre-fetched system settings. If None,
+                settings will be fetched from the database.
+            project_settings (Union[dict, None]): Pre-fetched project settings. If None,
+                settings will be fetched from the database.
+            reset_plugins (bool): Reset plugin discovery caches. Defaults to True.
+                Set to False to reuse cached plugins from the previous discovery,
+                improving performance for batch operations.
         """
 
-        self._reset_publish_plugins(discover_publish_plugins)
-        self._reset_creator_plugins()
-        self._reset_convertor_plugins()
+        self._reset_publish_plugins(discover_publish_plugins, reset_plugins=reset_plugins)
+        self._reset_creator_plugins(system_settings=system_settings, project_settings=project_settings, reset_plugins=reset_plugins)
+        self._reset_convertor_plugins(reset_plugins=reset_plugins)
 
-    def _reset_publish_plugins(self, discover_publish_plugins):
+    def _reset_publish_plugins(self, discover_publish_plugins, reset_plugins=True):
         from openpype.pipeline import OpenPypePyblishPluginMixin
         from openpype.pipeline.publish import (
-            publish_plugins_discover
+            publish_plugins_discover,
         )
 
         # Reset publish plugins
@@ -1757,7 +1780,15 @@ class CreateContext:
         plugins_by_targets = []
         plugins_mismatch_targets = []
         if discover_publish_plugins:
-            discover_result = publish_plugins_discover()
+            # Use cached result if available and reset_plugins is False
+            if not reset_plugins and CreateContext._cached_publish_discover_result is not None:
+                discover_result = CreateContext._cached_publish_discover_result
+            else:
+                # Discover plugins (always applies settings from discovery filter)
+                discover_result = publish_plugins_discover()
+                # Cache the result for subsequent calls with reset_plugins=False
+                CreateContext._cached_publish_discover_result = discover_result
+
             publish_plugins = discover_result.plugins
 
             targets = set(pyblish.logic.registered_targets())
@@ -1782,19 +1813,31 @@ class CreateContext:
         self.publish_plugins = plugins_by_targets
         self.plugins_with_defs = plugins_with_defs
 
-    def _reset_creator_plugins(self):
-        # Prepare settings
-        system_settings = get_system_settings()
-        project_settings = get_project_settings(self.project_name)
+    def _reset_creator_plugins(self, system_settings=None, project_settings=None, reset_plugins=True):
+        # Prepare settings - use provided settings or fetch from database
+        if system_settings is None:
+            system_settings = get_system_settings()
+        if project_settings is None:
+            project_settings = get_project_settings(self.project_name)
 
         # Discover and prepare creators
         creators = {}
         disabled_creators = {}
         autocreators = {}
         manual_creators = {}
-        report = discover_creator_plugins(return_report=True)
-        self.creator_discover_result = report
-        for creator_class in report.plugins:
+
+        # Use cached creator classes if available and reset_plugins is False
+        if not reset_plugins and CreateContext._cached_creator_classes is not None:
+            creator_classes = CreateContext._cached_creator_classes
+        else:
+            # Discover creators
+            report = discover_creator_plugins(return_report=True)
+            self.creator_discover_result = report
+            creator_classes = report.plugins
+            # Cache the creator classes for subsequent calls with reset_plugins=False
+            CreateContext._cached_creator_classes = creator_classes
+
+        for creator_class in creator_classes:
             if inspect.isabstract(creator_class):
                 self.log.debug(
                     "Skipping abstract Creator {}".format(str(creator_class))
@@ -1842,11 +1885,21 @@ class CreateContext:
         self.creators = creators
         self.disabled_creators = disabled_creators
 
-    def _reset_convertor_plugins(self):
+    def _reset_convertor_plugins(self, reset_plugins=True):
         convertors_plugins = {}
-        report = discover_convertor_plugins(return_report=True)
-        self.convertor_discover_result = report
-        for convertor_class in report.plugins:
+
+        # Use cached convertor classes if available and reset_plugins is False
+        if not reset_plugins and CreateContext._cached_convertor_classes is not None:
+            convertor_classes = CreateContext._cached_convertor_classes
+        else:
+            # Discover convertors
+            report = discover_convertor_plugins(return_report=True)
+            self.convertor_discover_result = report
+            convertor_classes = report.plugins
+            # Cache the convertor classes for subsequent calls with reset_plugins=False
+            CreateContext._cached_convertor_classes = convertor_classes
+
+        for convertor_class in convertor_classes:
             if inspect.isabstract(convertor_class):
                 self.log.info(
                     "Skipping abstract Creator {}".format(str(convertor_class))

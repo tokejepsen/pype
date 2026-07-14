@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <error id="main">
+        <title>Deadline Web Service Connection</title>
+        <description>
+## Could not connect to Deadline Web Service
+
+The publish process cannot reach the Deadline Web Service. This is required for farm rendering.
+
+### How to repair?
+
+1. **Check if Deadline is running**: Make sure the Deadline Web Service is running on the configured machine.
+2. **Verify the URL**: Confirm the Deadline Web Service URL is correct in your Settings.
+3. **Network connectivity**: Ensure you have network access to the Deadline server.
+4. **Contact your admin**: If the issue persists, contact your pipeline admin.
+
+        </description>
+        <detail>
+### __Detailed Info__
+
+The Deadline Web Service must be running and accessible for farm rendering to work. Common causes:
+- Deadline service is stopped or crashed
+- Network connectivity issues
+- Incorrect URL configuration
+- Firewall blocking the connection
+- Wrong hostname or port number
+        </detail>
+    </error>
+    <error id="timeout">
+        <title>Deadline Web Service Timeout</title>
+        <description>
+## Connection to Deadline Web Service timed out
+
+The Deadline Web Service is not responding within the expected time. This usually means the service is overloaded or unreachable.
+
+### How to repair?
+
+1. **Wait and retry**: The service may be temporarily overloaded. Wait a moment and try publishing again.
+2. **Check Deadline status**: Ask your admin to check if the Deadline server is under heavy load.
+3. **Check network**: Verify your network connection is stable and not experiencing issues.
+4. **Contact your admin**: If timeouts continue, contact your pipeline admin.
+
+        </description>
+        <detail>
+### __Detailed Info__
+
+Connection timeouts can occur when:
+- Deadline server is under heavy load with many job submissions
+- Network latency is high
+- Firewall is rate-limiting connections
+- The Deadline service is becoming unresponsive
+        </detail>
+    </error>
+    <error id="unconfigured">
+        <title>Deadline Web Service Not Configured</title>
+        <description>
+## Deadline Web Service URL not configured
+
+No Deadline Web Service URL has been configured in your settings.
+
+### How to repair?
+
+Contact your pipeline admin to configure the Deadline Web Service URL in the OpenPype Settings.
+
+        </description>
+        <detail>
+### __Detailed Info__
+
+The Deadline Web Service URL must be configured before you can use farm rendering.
+Your admin should set this in: Settings > Modules > Deadline > deadline_webservice_url
+        </detail>
+    </error>
+</root>

@@ -258,6 +258,15 @@ class ExtractBurnin(publish.Extractor):
             # Add data members.
             burnin_data.update(instance.data.get("burninDataMembers", {}))
 
+            # Add explicit frame list if available (overrides {current_frame} FFmpeg expression)
+            explicit_frames = instance.data.get("explicitFrames")
+            if isinstance(explicit_frames, str):
+                explicit_frames = [
+                    f.strip() for f in explicit_frames.split(",")
+                    if f.strip()
+                ]
+                burnin_data["current_frame"] = [int(f) for f in explicit_frames]
+
             # Add source camera name to burnin data
             camera_name = repre.get("camera_name")
             if camera_name:

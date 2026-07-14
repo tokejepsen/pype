@@ -1368,7 +1368,9 @@
             "enabled": true,
             "add_for_families": [
                 "layout"
-            ]
+            ],
+            "bake_animation_layers": false,
+            "export_selected_strict": false
         },
         "ExtractCameraAlembic": {
             "enabled": true,

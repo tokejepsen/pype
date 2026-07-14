@@ -46,22 +46,26 @@ class ExtractObj(publish.Extractor):
             cmds.loadPlugin('objExport')
 
         # Export
-        with lib.no_display_layers(instance):
-            with lib.displaySmoothness(members,
-                                       divisionsU=0,
-                                       divisionsV=0,
-                                       pointsWire=4,
-                                       pointsShaded=1,
-                                       polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
-                    with lib.maintained_selection():
-                        cmds.select(members, noExpand=True)
-                        cmds.file(path,
-                                  exportSelected=True,
-                                  type='OBJexport',
-                                  preserveReferences=True,
-                                  force=True)
+        with lib.maintained_time():
+            frame = instance.data.get("frameStart", int(cmds.currentTime(query=True)))
+            cmds.currentTime(frame, edit=True)
+
+            with lib.no_display_layers(instance):
+                with lib.displaySmoothness(members,
+                                           divisionsU=0,
+                                           divisionsV=0,
+                                           pointsWire=4,
+                                           pointsShaded=1,
+                                           polygonObject=1):
+                    with lib.shader(members,
+                                    shadingEngine="initialShadingGroup"):
+                        with lib.maintained_selection():
+                            cmds.select(members, noExpand=True)
+                            cmds.file(path,
+                                      exportSelected=True,
+                                      type='OBJexport',
+                                      preserveReferences=True,
+                                      force=True)
 
         if "representation" not in instance.data:
             instance.data["representation"] = []

@@ -260,6 +260,29 @@ def run(script):
         runpy.run_path(script, run_name="__main__", )
 
 
+@main.command(
+    "run_module",
+    context_settings=dict(
+        ignore_unknown_options=True,
+        allow_extra_args=True))
+@click.argument("module", required=True)
+def run_module(module):
+    """Run python module in Pype context."""
+    import runpy
+
+    if not module:
+        print("Error: missing module name.")
+    else:
+
+        args = sys.argv
+        args.remove("run_module")
+        args.remove(module)
+        sys.argv = args
+        args_string = " ".join(args[1:])
+        print(f"... running: {module} {args_string}")
+        runpy.run_module(module, run_name="__main__", alter_sys=True)
+
+
 @main.command()
 @click.argument("folder", nargs=-1)
 @click.option("-m",

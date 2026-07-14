@@ -5,16 +5,33 @@ import os
 from maya import cmds
 
 from openpype.pipeline import publish
-from openpype.hosts.maya.api.lib import maintained_selection
+from openpype.hosts.maya.api.lib import (
+    maintained_selection,
+    remove_namespaces_from_file,
+)
+from openpype.lib import TextDef
+from openpype.pipeline.publish import OpenPypePyblishPluginMixin
 
 
-class ExtractRig(publish.Extractor):
+class ExtractRig(publish.Extractor, OpenPypePyblishPluginMixin):
     """Extract rig as Maya Scene."""
 
     label = "Extract Rig (Maya Scene)"
     hosts = ["maya"]
     families = ["rig"]
     scene_type = "ma"
+    namespaces_to_remove = ""
+
+    @classmethod
+    def get_attribute_defs(cls):
+        return [
+            TextDef(
+                "namespaces_to_remove",
+                label="Namespaces to Remove",
+                default=cls.namespaces_to_remove,
+                placeholder="namespace1, namespace2"
+            )
+        ]
 
     def process(self, instance):
         """Plugin entry point."""
@@ -51,6 +68,12 @@ class ExtractRig(publish.Extractor):
                       constraints=True,
                       expressions=True,
                       constructionHistory=True)
+
+        attribute_values = self.get_attr_values_from_data(instance.data)
+        namespaces_to_remove = attribute_values.get("namespaces_to_remove", "")
+        namespaces_to_remove = [s.strip() for s in namespaces_to_remove.split(",") if s]
+        if namespaces_to_remove:
+            remove_namespaces_from_file(path, namespaces_to_remove)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

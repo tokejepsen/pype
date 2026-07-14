@@ -38,6 +38,11 @@ class ExtractSequence(pyblish.api.Extractor):
             "* Processing instance \"{}\"".format(instance.data["label"])
         )
 
+        # Skip local extraction for farm instances
+        if "render.farm" in instance.data.get("families", []):
+            self.log.debug("Skipping local extraction — instance targets farm.")
+            return
+
         # Get all layers and filter out not visible
         layers = instance.data["layers"]
         filtered_layers = [
@@ -66,7 +71,8 @@ class ExtractSequence(pyblish.api.Extractor):
             "ignoreLayersTransparency", False
         )
 
-        mark_in = instance.context.data["sceneMarkIn"]
+        scene_mark_in = instance.context.data["sceneMarkIn"]
+        mark_in = scene_mark_in
         mark_out = instance.context.data["sceneMarkOut"]
 
         # Change scene Start Frame to 0 to prevent frame index issues
@@ -78,6 +84,125 @@ class ExtractSequence(pyblish.api.Extractor):
 
         # Frame start/end may be stored as float
         frame_start = int(instance.data["frameStart"])
+        frame_end = int(instance.data.get("frameEnd", mark_out))
+
+        # Prefer the instance's own creator attributes for the DB-space frame
+        # range. `instance.data["frameStart"/"frameEnd"]` can be reset back to
+        # the full scene range by later collectors, but the creator attributes
+        # keep the user-defined per-instance range (e.g. a render pass that
+        # only covers frames 37-73).
+        creator_attributes = instance.data.get("creator_attributes", {})
+        if (
+            creator_attributes.get("frame_start") is not None
+            and creator_attributes.get("frame_end") is not None
+        ):
+            frame_start = int(creator_attributes["frame_start"])
+            frame_end = int(creator_attributes["frame_end"])
+            # Write the resolved range back onto the instance so downstream
+            # plugins (integrator version document, ExtractReview ftrack
+            # frame range) register the per-instance range instead of the
+            # full scene range.
+            instance.data["frameStart"] = frame_start
+            instance.data["frameEnd"] = frame_end
+
+        # ------------------------------------------------------------------
+        # FRAME RANGE DEBUG (remove once frame range issue is resolved)
+        # ------------------------------------------------------------------
+        self.log.info("=== ExtractSequence FRAME RANGE DEBUG ===")
+        self.log.info("  subset: {}".format(instance.data.get("subset")))
+        self.log.info("  family: {}".format(instance.data.get("family")))
+        self.log.info("  families: {}".format(instance.data.get("families")))
+        self.log.info("  creator_identifier: {}".format(
+            instance.data.get("creator_identifier")
+        ))
+        self.log.info("  context sceneMarkIn: {}".format(scene_mark_in))
+        self.log.info("  context sceneMarkOut: {}".format(
+            instance.context.data.get("sceneMarkOut")
+        ))
+        self.log.info("  context frameStart (asset): {}".format(
+            instance.context.data.get("frameStart")
+        ))
+        self.log.info("  context frameEnd (asset): {}".format(
+            instance.context.data.get("frameEnd")
+        ))
+        self.log.info("  context handleStart: {}".format(
+            instance.context.data.get("handleStart")
+        ))
+        self.log.info("  instance.data['frameStart']: {} -> int {}".format(
+            instance.data.get("frameStart"), frame_start
+        ))
+        self.log.info("  instance.data['frameEnd']: {} -> int {}".format(
+            instance.data.get("frameEnd"), frame_end
+        ))
+        self.log.info("  instance creator_attributes: {}".format(
+            instance.data.get("creator_attributes")
+        ))
+        _rld = instance.data.get("renderLayerData")
+        if _rld is None:
+            self.log.info("  renderLayerData: None")
+        else:
+            self.log.info(
+                "  renderLayerData.creator_attributes: {}".format(
+                    _rld.get("creator_attributes")
+                )
+            )
+        # ------------------------------------------------------------------
+
+        # Convert instance DB-space frame range to TVPaint scene-space frame
+        # range for all render/review instances.
+        #
+        # DB frames are stored as asset frame numbers (e.g. 37 means
+        # "the 37th frame of the shot"), while TVPaint scene frames start at
+        # sceneMarkIn (which corresponds to DB assetFrameStart).
+        # Offset = assetFrameStart - sceneMarkIn; so
+        #   scene_frame = db_frame - offset = db_frame - (base - sceneMarkIn)
+        #
+        # Offset base priority:
+        #   1. For render.pass: use the linked render.layer's stored
+        #      frame_start (present on non-legacy layers).
+        #   2. Fall back to context frameStart (== asset data frameStart),
+        #      which always maps correctly to sceneMarkIn.
+        #
+        # No clamping: ranges may legitimately extend past sceneMarkOut when
+        # a layer uses repeat/hold/pingpong post-behaviour.
+        offset_base = None
+        if instance.data.get("creator_identifier") == "render.pass":
+            render_layer_data = instance.data.get("renderLayerData") or {}
+            rl_attrs = render_layer_data.get("creator_attributes", {})
+            rl_frame_start = rl_attrs.get("frame_start")
+            if rl_frame_start is not None:
+                offset_base = int(rl_frame_start)
+
+        if offset_base is None:
+            # Fallback: asset frame start from context (always available)
+            offset_base = instance.context.data.get("frameStart")
+
+        if offset_base is not None:
+            db_to_scene_offset = offset_base - scene_mark_in
+            mark_in = frame_start - db_to_scene_offset
+            mark_out = frame_end - db_to_scene_offset
+
+        # ------------------------------------------------------------------
+        # FRAME RANGE DEBUG (remove once frame range issue is resolved)
+        # ------------------------------------------------------------------
+        self.log.info("  resolved offset_base: {}".format(offset_base))
+        if offset_base is not None:
+            self.log.info("  db_to_scene_offset: {}".format(
+                offset_base - scene_mark_in
+            ))
+        else:
+            self.log.info(
+                "  db_to_scene_offset: N/A (offset_base is None,"
+                " scene marks used as-is)"
+            )
+        self.log.info("  FINAL render range mark_in: {}".format(mark_in))
+        self.log.info("  FINAL render range mark_out: {}".format(mark_out))
+        self.log.info(
+            "  FINAL frame count (mark_out - mark_in + 1): {}".format(
+                mark_out - mark_in + 1
+            )
+        )
+        # ------------------------------------------------------------------
 
         # Handles are not stored per instance but on Context
         handle_start = instance.context.data["handleStart"]
@@ -97,6 +222,19 @@ class ExtractSequence(pyblish.api.Extractor):
 
         # Calculate frame end
         output_frame_end = output_frame_start + (mark_out - mark_in)
+
+        # ------------------------------------------------------------------
+        # FRAME RANGE DEBUG (remove once frame range issue is resolved)
+        # ------------------------------------------------------------------
+        self.log.info("  handle_start: {}".format(handle_start))
+        self.log.info(
+            "  output_frame_start (frame_start - handle_start): {}".format(
+                output_frame_start
+            )
+        )
+        self.log.info("  output_frame_end: {}".format(output_frame_end))
+        self.log.info("=== END FRAME RANGE DEBUG ===")
+        # ------------------------------------------------------------------
 
         # Save to staging dir
         output_dir = instance.data.get("stagingDir")
@@ -166,6 +304,26 @@ class ExtractSequence(pyblish.api.Extractor):
         if not single_file:
             new_repre["frameStart"] = output_frame_start
             new_repre["frameEnd"] = output_frame_end
+
+        # ------------------------------------------------------------------
+        # FRAME RANGE DEBUG (remove once frame range issue is resolved)
+        # ------------------------------------------------------------------
+        self.log.info(
+            "  RENDERED file count: {}".format(
+                len(output_filepaths_by_frame_idx)
+            )
+        )
+        self.log.info(
+            "  REPRESENTATION file count: {}".format(
+                1 if single_file else len(repre_files)
+            )
+        )
+        self.log.info(
+            "  REPRESENTATION frameStart={} frameEnd={}".format(
+                new_repre.get("frameStart"), new_repre.get("frameEnd")
+            )
+        )
+        # ------------------------------------------------------------------
 
         self.log.debug("Creating new representation: {}".format(new_repre))
 

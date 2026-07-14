@@ -173,6 +173,26 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return get_containers()
 
     def initial_launch(self):
+        # Log task name from environment vs workfile on every launch
+        env_task = os.environ.get("AVALON_TASK")
+        env_asset = os.environ.get("AVALON_ASSET")
+        print(
+            "[TVPaint] Launch environment context - asset: '{}', task: '{}'".format(
+                env_asset, env_task
+            )
+        )
+        workfile_context = get_current_workfile_context()
+        if workfile_context:
+            print(
+                "[TVPaint] Launch workfile context - asset: '{}', task: '{}'".format(
+                    workfile_context.get("asset_name"),
+                    workfile_context.get("task_name")
+                )
+            )
+        else:
+            print("[TVPaint] No workfile context found in current workfile")
+
+
         # Setup project settings if its the template that's launched.
         # TODO also check for template creation when it's possible to define
         #   templates

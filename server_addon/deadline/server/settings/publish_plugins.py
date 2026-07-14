@@ -239,6 +239,17 @@ class BlenderSubmitDeadlineModel(BaseSettingsModel):
     group: str = Field("", title="Group Name")
 
 
+class TVPaintSubmitDeadlineModel(BaseSettingsModel):
+    enabled: bool = Field(True)
+    optional: bool = Field(title="Optional")
+    active: bool = Field(title="Active")
+    use_published: bool = Field(title="Use Published scene")
+    priority: int = Field(title="Priority")
+    chunk_size: int = Field(title="Frames per Chunk")
+    group: str = Field("none", title="Group Name")
+    department: str = Field("", title="Department")
+
+
 class AOVFilterSubmodel(BaseSettingsModel):
     _layout = "expanded"
     name: str = Field(title="Host")
@@ -322,6 +333,9 @@ class PublishPluginsModel(BaseSettingsModel):
     BlenderSubmitDeadline: BlenderSubmitDeadlineModel = Field(
         default_factory=BlenderSubmitDeadlineModel,
         title="Blender Submit Deadline")
+    TVPaintSubmitDeadline: TVPaintSubmitDeadlineModel = Field(
+        default_factory=TVPaintSubmitDeadlineModel,
+        title="TVPaint Submit Deadline")
     ProcessSubmittedCacheJobOnFarm: ProcessCacheJobFarmModel = Field(
         default_factory=ProcessCacheJobFarmModel,
         title="Process submitted cache Job on farm.")
@@ -439,6 +453,16 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "priority": 50,
         "chunk_size": 10,
         "group": "none"
+    },
+    "TVPaintSubmitDeadline": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+        "use_published": True,
+        "priority": 50,
+        "chunk_size": 10,
+        "group": "none",
+        "department": ""
     },
     "ProcessSubmittedCacheJobOnFarm": {
         "enabled": True,

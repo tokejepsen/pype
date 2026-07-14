@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Instance frame range does not cover full workfile range</title>
+<description>## Instance frame range issue
+
+The render instance **{instance_label}** has layers with extending post-behavior (repeat, pingpong, or hold) but its **frame_end** does not cover the full workfile frame range.
+
+- Current frame_end: **{current_frame_end}**
+- Expected frame_end: **{expected_frame_end}** (scene marks: {scene_mark_in}\u2013{scene_mark_out})
+
+### How to fix?
+
+Use the **Repair** button to expand the instance frame_end to match the scene mark-out, or adjust the frame range manually in the render creator.
+
+Reset publishing after making changes.
+</description>
+</error>
+</root>

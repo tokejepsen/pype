@@ -78,6 +78,20 @@ class ExtractPlayblast(publish.Extractor):
 
         preset = lib.load_capture_preset(data=capture_preset)
 
+        # Explicit frames should override start and end frame values.
+        if instance.data["explicitFrames"]:
+            frames = tuple(
+                int(frame.strip())
+                for frame in instance.data["explicitFrames"].split(",")
+            )
+            preset["frame"] = frames
+            start = min(frames)
+            end = max(frames)
+            preset["raw_frame_numbers"] = True
+
+            instance.data["frameStart"] = start
+            instance.data["frameEnd"] = end
+
         # "isolate_view" will already have been applied at creation, so we'll
         # ignore it here.
         preset.pop("isolate_view")
@@ -225,9 +239,9 @@ class ExtractPlayblast(publish.Extractor):
 
         collected_files = os.listdir(stagingdir)
         patterns = [clique.PATTERNS["frames"]]
-        collections, remainder = clique.assemble(collected_files,
-                                                 minimum_items=1,
-                                                 patterns=patterns)
+        collections, _ = clique.assemble(
+            collected_files, minimum_items=1, patterns=patterns
+        )
 
         filename = preset.get("filename", "%TEMP%")
         self.log.debug("filename {}".format(filename))
@@ -240,11 +254,6 @@ class ExtractPlayblast(publish.Extractor):
                 self.log.debug(
                     "we found collection of interest {}".format(
                         str(frame_collection)))
-
-        # Account for negative frame numbers.
-        frame_collection.indexes.clear()
-        frame_collection.indexes.update([x for x in range(start, end + 1)])
-        self.log.info(frame_collection)
 
         # Discard handle start frames.
         #This should be optional.

@@ -64,6 +64,17 @@ class MultipleNotes(BaseAction):
                 'value': 'none'
             }
 
+            completable_label = {
+                'type': 'label',
+                'value': '## Completable: ##'
+            }
+
+            completable_value = {
+                'name': 'completable',
+                'type': 'boolean',
+                'value': False
+            }
+
             splitter = {
                 'type': 'label',
                 'value': '{}'.format(200 * "-")
@@ -75,6 +86,9 @@ class MultipleNotes(BaseAction):
             items.append(splitter)
             items.append(category_label)
             items.append(category_value)
+            items.append(splitter)
+            items.append(completable_label)
+            items.append(completable_value)
             return items
 
     def launch(self, session, entities, event):
@@ -92,10 +106,13 @@ class MultipleNotes(BaseAction):
         user = session.query(
             'User where username is "{}"'.format(session.api_user)
         ).one()
+        # Get completable
+        completable = values.get('completable', False)
         # Base note data
         note_data = {
             'content': note_value,
-            'author': user
+            'author': user,
+            'is_todo': completable
         }
         # Get category
         category_value = values['category']

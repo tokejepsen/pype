@@ -42,6 +42,12 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
         group_id = creator_attributes["group_id"]
         if creator_attributes["mark_for_review"]:
             instance.data["families"].append("review")
+        if creator_attributes.get("render_target") == "farm":
+            instance.data["families"].append("render.farm")
+            instance.data["farm"] = True
+        else:
+            instance.data["families"].append("render.local")
+        instance.data["byFrameStep"] = 1
 
         layers_data = instance.context.data["layersData"]
         instance.data["layers"] = [
@@ -59,6 +65,12 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
         creator_attributes = instance.data["creator_attributes"]
         if creator_attributes["mark_for_review"]:
             instance.data["families"].append("review")
+        if creator_attributes.get("render_target") == "farm":
+            instance.data["families"].append("render.farm")
+            instance.data["farm"] = True
+        else:
+            instance.data["families"].append("render.local")
+        instance.data["byFrameStep"] = 1
 
         instance.data["layers"] = [
             copy.deepcopy(layer)
@@ -95,6 +107,12 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
         creator_attributes = instance.data["creator_attributes"]
         if creator_attributes["mark_for_review"]:
             instance.data["families"].append("review")
+        if creator_attributes.get("render_target") == "farm":
+            instance.data["families"].append("render.farm")
+            instance.data["farm"] = True
+        else:
+            instance.data["families"].append("render.local")
+        instance.data["byFrameStep"] = 1
 
         instance.data["layers"] = copy.deepcopy(
             instance.context.data["layersData"]

@@ -135,8 +135,18 @@ class PublisherWindow(QtWidgets.QDialog):
         validate_btn = ValidateBtn(footer_widget)
         publish_btn = PublishBtn(footer_widget)
 
+        reset_plugin_settings_chk = QtWidgets.QCheckBox(
+            "Reset Plugins", footer_bottom_widget
+        )
+        reset_plugin_settings_chk.setChecked(True)
+        reset_plugin_settings_chk.setToolTip(
+            "When enabled, plugin discovery caches are cleared on each reset.\n"
+            "Disabling speeds up reset significantly."
+        )
+
         footer_bottom_layout = QtWidgets.QHBoxLayout(footer_bottom_widget)
         footer_bottom_layout.setContentsMargins(0, 0, 0, 0)
+        footer_bottom_layout.addWidget(reset_plugin_settings_chk, 0)
         footer_bottom_layout.addStretch(1)
         footer_bottom_layout.addWidget(save_btn, 0)
         footer_bottom_layout.addWidget(reset_btn, 0)
@@ -270,6 +280,10 @@ class PublisherWindow(QtWidgets.QDialog):
         validate_btn.clicked.connect(self._on_validate_clicked)
         publish_btn.clicked.connect(self._on_publish_clicked)
 
+        reset_plugin_settings_chk.stateChanged.connect(
+            self._on_reset_plugin_settings_changed
+        )
+
         publish_frame.details_page_requested.connect(self._go_to_details_tab)
         create_overlay_button.clicked.connect(
             self._on_create_overlay_button_click
@@ -359,6 +373,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._stop_btn = stop_btn
         self._validate_btn = validate_btn
         self._publish_btn = publish_btn
+
+        self._reset_plugin_settings_chk = reset_plugin_settings_chk
 
         self._overlay_object = overlay_object
 
@@ -807,6 +823,11 @@ class PublisherWindow(QtWidgets.QDialog):
         if self._save_changes(False):
             self._set_publish_comment()
             self._controller.publish()
+
+    def _on_reset_plugin_settings_changed(self, state):
+        self._controller.reset_plugins = (
+            state == QtCore.Qt.Checked
+        )
 
     def _set_footer_enabled(self, enabled):
         self._save_btn.setEnabled(True)

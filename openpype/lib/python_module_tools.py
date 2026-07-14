@@ -163,40 +163,61 @@ def _import_module_from_dirpath_py2(dirpath, module_name, dst_module_name):
 
 def _import_module_from_dirpath_py3(dirpath, module_name, dst_module_name):
     """Import passed dirpath as python module using Python 3 modules."""
+    import importlib.util
+    from importlib.machinery import PathFinder, ModuleSpec
+
     if dst_module_name:
         full_module_name = "{}.{}".format(dst_module_name, module_name)
-        dst_module = sys.modules[dst_module_name]
+        dst_module = sys.modules.get(dst_module_name)
     else:
         full_module_name = module_name
         dst_module = None
 
-    # Skip import if is already imported
     if full_module_name in sys.modules:
         return sys.modules[full_module_name]
 
-    import importlib.util
-    from importlib._bootstrap_external import PathFinder
+    # --- Step 1: Obtain the Spec ---
+    if sys.version_info >= (3, 12):
+        spec = PathFinder.find_spec(full_module_name, [dirpath])
+        if not spec:
+            return None
+    else:
+        loader = PathFinder.find_module(full_module_name, [dirpath])
+        if not loader:
+            return None
+        spec = importlib.util.spec_from_loader(full_module_name, loader, origin=dirpath)
 
-    # Find loader for passed path and name
-    loader = PathFinder.find_module(full_module_name, [dirpath])
-
-    # Load specs of module
-    spec = importlib.util.spec_from_loader(
-        full_module_name, loader, origin=dirpath
-    )
-
-    # Create module based on specs
+    # --- Step 2: Create the Module ---
     module = importlib.util.module_from_spec(spec)
 
-    # Store module to destination module and `sys.modules`
-    # WARNING this mus be done before module execution
+    # --- Step 3: CRITICAL FIX for Relative Imports ---
+    # If it's a package (has __init__.py), the __package__ is its own full name.
+    # This ensures 'from .addon' looks inside 'openpype_modules.bumpybox_addon'
+    if spec.submodule_search_locations is not None:
+        module.__package__ = full_module_name
+    else:
+        module.__package__ = full_module_name.rpartition('.')[0]
+
+    # --- Step 4: Fix the Parent (Ghost Spec) ---
+    if dst_module is not None and not hasattr(dst_module, "__spec__"):
+        try:
+            dst_module.__spec__ = ModuleSpec(dst_module_name, None, is_package=True)
+        except Exception:
+            pass
+
+    # --- Step 5: Register BEFORE Execution ---
     if dst_module is not None:
         setattr(dst_module, module_name, module)
 
     sys.modules[full_module_name] = module
 
-    # Execute module import
-    loader.exec_module(module)
+    # --- Step 6: Execute ---
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        if full_module_name in sys.modules:
+            del sys.modules[full_module_name]
+        raise
 
     return module
 

@@ -154,13 +154,6 @@ class ExtractReviewIntermediates(publish.Extractor):
             # assign to representations
             instance.data["representations"] += generated_repres
             instance.data["useSequenceForReview"] = False
-        else:
-            instance.data["families"].remove("review")
-            self.log.debug(
-                "Removing `review` from families. "
-                "Not available baking profile."
-            )
-            self.log.debug(instance.data["families"])
 
         self.log.debug(
             "_ representations: {}".format(

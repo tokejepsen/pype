@@ -33,6 +33,7 @@ from openpype.pipeline.publish import (
     KnownPublishError,
     get_publish_template_name,
 )
+from openpype.lib.path_tools import to_unc_path
 
 log = logging.getLogger(__name__)
 
@@ -206,6 +207,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         repres = instance.data.get("representations")
         # Raise error if instance don't have any representations
         if not repres:
+            return []
             raise KnownPublishError(
                 "Instance {} has no representations to integrate".format(
                     instance.data["family"]
@@ -992,8 +994,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         return {
             "_id": ObjectId(),
             "path": self.get_rootless_path(anatomy, path),
-            "size": os.path.getsize(path),
-            "hash": source_hash(path),
+            "size": os.path.getsize(to_unc_path(path)),
+            "hash": source_hash(to_unc_path(path)),
             "sites": sites
         }
 

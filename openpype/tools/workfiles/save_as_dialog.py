@@ -13,6 +13,7 @@ from openpype.pipeline.workfile import get_last_workfile_with_version
 from openpype.pipeline.template_data import get_template_data_with_names
 from openpype.tools.utils import PlaceholderLineEdit
 from openpype.pipeline import version_start, get_current_host_name
+from openpype.lib.path_tools import to_unc_path
 
 log = logging.getLogger(__name__)
 
@@ -449,7 +450,7 @@ class SaveAsDialog(QtWidgets.QDialog):
                 work_file = self.get_work_file()
                 # Safety check
                 path = os.path.join(self.root, work_file)
-                if not os.path.exists(path):
+                if not os.path.exists(to_unc_path(path)):
                     found_valid_version = True
                     break
 
@@ -469,7 +470,7 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         self.work_file = work_file
 
-        path_exists = os.path.exists(os.path.join(self.root, work_file))
+        path_exists = os.path.exists(to_unc_path(os.path.join(self.root, work_file)))
 
         self.btn_ok.setEnabled(not path_exists)
 

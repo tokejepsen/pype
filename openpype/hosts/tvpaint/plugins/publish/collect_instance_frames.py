@@ -21,11 +21,20 @@ class CollectOutputFrameRange(pyblish.api.InstancePlugin):
 
         context = instance.context
 
-        frame_start = asset_doc["data"]["frameStart"]
+        # Check if instance has custom frame ranges set via creator attributes
+        creator_attributes = instance.data.get("creator_attributes", {})
+        if "frame_start" in creator_attributes and "frame_end" in creator_attributes:
+            # Use instance-specific frame range
+            frame_start = creator_attributes["frame_start"]
+            frame_end = creator_attributes["frame_end"]
+        else:
+            # Fall back to scene mark in/out (backwards compatibility)
+            frame_start = asset_doc["data"]["frameStart"]
+            frame_end = frame_start + (
+                context.data["sceneMarkOut"] - context.data["sceneMarkIn"]
+            )
+
         fps = asset_doc["data"]["fps"]
-        frame_end = frame_start + (
-            context.data["sceneMarkOut"] - context.data["sceneMarkIn"]
-        )
         instance.data["fps"] = fps
         instance.data["frameStart"] = frame_start
         instance.data["frameEnd"] = frame_end

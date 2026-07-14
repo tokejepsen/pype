@@ -273,7 +273,7 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "name": ext,
             "ext": ext,
             "stagingDir": output_dir,
-            "tags": []
+            "tags": ["review"],
         }
 
         frame_start_str = self._get_frame_start_str(first_frame, last_frame)

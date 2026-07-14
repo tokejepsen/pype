@@ -110,7 +110,13 @@ install_requires = [
     "timeit"
 ]
 
-includes = []
+includes = [
+    # Required by opentimelineio adapters (fcp_xml.py);
+    # cx_Freeze omits this submodule unless explicitly listed because
+    # nothing in the frozen entry points imports it directly.
+    # cElementTree was deprecated in Python 3.3 but still present in 3.9.
+    "xml.etree.cElementTree",
+]
 # WARNING: As of cx_freeze there is a bug?
 # when this is empty, its hooks will not kick in
 # and won't clean platform irrelevant modules

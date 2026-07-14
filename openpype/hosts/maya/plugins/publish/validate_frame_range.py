@@ -60,12 +60,17 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
         frame_start = int(context.data.get("frameStart"))
         frame_end = int(context.data.get("frameEnd"))
 
-        inst_start = int(instance.data.get("frameStartHandle"))
-        inst_end = int(instance.data.get("frameEndHandle"))
+        inst_frame_start_handle = int(instance.data.get("frameStartHandle"))
+        inst_frame_end_handle = int(instance.data.get("frameEndHandle"))
         inst_frame_start = int(instance.data.get("frameStart"))
         inst_frame_end = int(instance.data.get("frameEnd"))
         inst_handle_start = int(instance.data.get("handleStart"))
         inst_handle_end = int(instance.data.get("handleEnd"))
+
+        self.log.info("Frame start: {}, instance: {}".format(frame_start, inst_frame_start))
+        self.log.info("Frame end: {}, instance: {}".format(frame_end, inst_frame_end))
+        self.log.info("Handle start: {}, instance: {}".format(handle_start, inst_handle_start))
+        self.log.info("Handle end: {}, instance: {}".format(handle_end, inst_handle_end))
 
         # basic sanity checks
         assert frame_start_handle <= frame_end_handle, (
@@ -76,20 +81,20 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
         if [ef for ef in self.exclude_families
                 if instance.data["family"] in ef]:
             return
-        if (inst_start != frame_start_handle):
-            errors.append("Instance start frame [ {} ] doesn't "
+        if (inst_frame_start_handle != frame_start_handle):
+            errors.append("Instance start frame handle [ {} ] doesn't "
                           "match the one set on asset [ {} ]: "
                           "{}/{}/{}/{} (handle/start/end/handle)".format(
-                              inst_start,
+                              inst_frame_start_handle,
                               frame_start_handle,
                               handle_start, frame_start, frame_end, handle_end
                           ))
 
-        if (inst_end != frame_end_handle):
-            errors.append("Instance end frame [ {} ] doesn't "
+        if (inst_frame_end_handle != frame_end_handle):
+            errors.append("Instance end frame handle [ {} ] doesn't "
                           "match the one set on asset [ {} ]: "
                           "{}/{}/{}/{} (handle/start/end/handle)".format(
-                              inst_end,
+                              inst_frame_end_handle,
                               frame_end_handle,
                               handle_start, frame_start, frame_end, handle_end
                           ))
@@ -125,7 +130,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
             cls.repair_renderlayer(instance)
             return
 
-        node = instance.data["name"]
+        node = instance.data["instance_node"]
         context = instance.context
 
         frame_start_handle = int(context.data.get("frameStartHandle"))

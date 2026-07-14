@@ -96,7 +96,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
     targets = ["local"]
 
     hosts = ["fusion", "max", "maya", "nuke", "houdini",
-             "celaction", "aftereffects", "harmony", "blender"]
+             "celaction", "aftereffects", "harmony", "blender", "tvpaint"]
 
     families = ["render.farm", "render.frames_farm",
                 "prerender.farm", "prerender.frames_farm",
@@ -111,7 +111,8 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                   "aftereffects": [r".*"],  # for everything from AE
                   "harmony": [r".*"],  # for everything from AE
                   "celaction": [r".*"],
-                  "max": [r".*"]}
+                  "max": [r".*"],
+                  "nuke": [r".*"]}
 
     environ_job_filter = [
         "OPENPYPE_METADATA_FILE"
@@ -216,9 +217,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             environment["OPENPYPE_RENDER_JOB"] = "0"
             environment["OPENPYPE_REMOTE_PUBLISH"] = "0"
             deadline_plugin = "OpenPype"
-            # Add OpenPype version if we are running from build.
-            if is_running_from_build():
-                self.environ_keys.append("OPENPYPE_VERSION")
 
         # add environments from self.environ_keys
         for env_key in self.environ_keys:

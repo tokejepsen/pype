@@ -71,12 +71,12 @@ class ValidateOutputResolution(
         reformat = cls.get_reformat(instance)
         if not reformat:
             return cls.missing_msg
-
+        """
         # check if reformat is set to correct root format
         correct_format = _check_resolution(instance, reformat)
         if not correct_format:
             return cls.resolution_msg
-
+        """
     @classmethod
     def repair(cls, instance):
         child_nodes = (

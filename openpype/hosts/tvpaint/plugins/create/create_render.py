@@ -47,6 +47,7 @@ from openpype.lib import (
     EnumDef,
     TextDef,
     BoolDef,
+    NumberDef,
 )
 from openpype.pipeline.create import (
     CreatedInstance,
@@ -60,6 +61,7 @@ from openpype.hosts.tvpaint.api.lib import (
     get_layers_data,
     get_groups_data,
     execute_george_through_file,
+    get_scene_data,
 )
 
 RENDER_LAYER_DETAILED_DESCRIPTIONS = (
@@ -209,6 +211,18 @@ class CreateRenderlayer(TVPaintCreator):
         creator_attributes["group_id"] = group_id
         creator_attributes["mark_for_review"] = mark_for_review
 
+        # Set frame ranges from mark in/out and asset frame start
+        project_name = self.create_context.get_current_project_name()
+        asset_name = self.create_context.get_current_asset_name()
+        scene_data = get_scene_data()
+        mark_in = scene_data.get("mark_in", 0)
+        mark_out = scene_data.get("mark_out", 0)
+        asset_doc = get_asset_by_name(project_name, asset_name)
+        frame_start = asset_doc["data"]["frameStart"]
+        frame_end = frame_start + (mark_out - mark_in)
+        creator_attributes["frame_start"] = frame_start
+        creator_attributes["frame_end"] = frame_end
+
         self.log.info(f"Subset name is {subset_name}")
         new_instance = CreatedInstance(
             self.family,
@@ -217,6 +231,13 @@ class CreateRenderlayer(TVPaintCreator):
             self
         )
         self._store_new_instance(new_instance)
+
+        # Auto-create render passes from layers if requested (do this before early return)
+        create_render_passes = pre_create_data.get("create_render_passes", False)
+        if create_render_passes:
+            self._create_render_passes_from_layers(
+                new_instance, group_id
+            )
 
         if not group_id or group_item["name"] == group_name:
             return new_instance
@@ -238,6 +259,7 @@ class CreateRenderlayer(TVPaintCreator):
             f"Name of group with index {group_id}"
             f" was changed to \"{group_name}\"."
         ))
+
         return new_instance
 
     def _get_groups_enum(self):
@@ -276,6 +298,21 @@ class CreateRenderlayer(TVPaintCreator):
                 "mark_for_review",
                 label="Review",
                 default=self.mark_for_review
+            ),
+            BoolDef(
+                "create_render_passes",
+                label="Create Render Passes per Layer",
+                default=False,
+                tooltip="Generate one render pass for each TVPaint layer in the group"
+            ),
+            EnumDef(
+                "render_target",
+                label="Render Target",
+                items=[
+                    {"value": "local", "label": "Local"},
+                    {"value": "farm", "label": "Farm"}
+                ],
+                default="local"
             )
         ]
 
@@ -291,6 +328,31 @@ class CreateRenderlayer(TVPaintCreator):
                 "mark_for_review",
                 label="Review",
                 default=self.mark_for_review
+            ),
+            EnumDef(
+                "render_target",
+                label="Render Target",
+                items=[
+                    {"value": "local", "label": "Local"},
+                    {"value": "farm", "label": "Farm"}
+                ],
+                default="local"
+            ),
+            NumberDef(
+                "frame_start",
+                label="Frame Start",
+                minimum=0,
+                maximum=999999,
+                decimals=0,
+                default=0
+            ),
+            NumberDef(
+                "frame_end",
+                label="Frame End",
+                minimum=0,
+                maximum=999999,
+                decimals=0,
+                default=1
             )
         ]
 
@@ -299,6 +361,83 @@ class CreateRenderlayer(TVPaintCreator):
         self._update_renderpass_groups()
 
         super().update_instances(update_list)
+
+    def _create_render_passes_from_layers(self, render_layer_instance, group_id):
+        """Create render passes from layers in the render layer group.
+
+        Args:
+            render_layer_instance (CreatedInstance): The render layer instance
+            group_id (int): The TVPaint color group ID
+        """
+        self.log.debug(
+            f"Auto-creating render passes for render layer group {group_id}"
+        )
+
+        # Get all layers in the scene
+        layers_data = get_layers_data()
+        layers_in_group = [
+            layer for layer in layers_data
+            if layer["group_id"] == group_id
+        ]
+
+        if not layers_in_group:
+            self.log.debug(
+                f"No layers found in group {group_id}. "
+                "Skipping render pass creation."
+            )
+            return
+
+        # Get project and asset info from create context
+        project_name = self.create_context.get_current_project_name()
+        asset_name = self.create_context.get_current_asset_name()
+        task_name = self.create_context.get_current_task_name()
+        host_name = self.create_context.host_name
+
+        asset_doc = get_asset_by_name(project_name, asset_name)
+        render_pass_creator = self.create_context.creators[
+            CreateRenderPass.identifier
+        ]
+
+        self.log.info(
+            f"Creating {len(layers_in_group)} render passes "
+            f"from layers in group {group_id}"
+        )
+
+        # Create a render pass for each layer
+        for layer in layers_in_group:
+            layer_name = layer["name"]
+            variant = layer_name
+
+            subset_name = render_pass_creator.get_subset_name(
+                variant,
+                task_name,
+                asset_doc,
+                project_name,
+                host_name=host_name
+            )
+
+            instance_data = {
+                "task": task_name,
+                "family": render_pass_creator.family,
+                "variant": variant
+            }
+
+            if AYON_SERVER_ENABLED:
+                instance_data["folderPath"] = asset_name
+            else:
+                instance_data["asset"] = asset_name
+
+            pre_create_data = {
+                "render_layer_instance_id": render_layer_instance.id,
+                "layer_names": [layer_name],
+                "mark_for_review": render_pass_creator.mark_for_review
+            }
+
+            render_pass_creator.create(
+                subset_name, instance_data, pre_create_data
+            )
+
+            self.log.debug(f"Created render pass for layer '{layer_name}'")
 
     def _update_color_groups(self):
         render_layer_instances = []
@@ -551,6 +690,18 @@ class CreateRenderPass(TVPaintCreator):
             render_layer_instance_id
         )
 
+        # Set frame ranges from mark in/out and asset frame start
+        project_name = self.create_context.get_current_project_name()
+        asset_name = self.create_context.get_current_asset_name()
+        scene_data = get_scene_data()
+        mark_in = scene_data.get("mark_in", 0)
+        mark_out = scene_data.get("mark_out", 0)
+        asset_doc = get_asset_by_name(project_name, asset_name)
+        frame_start = asset_doc["data"]["frameStart"]
+        frame_end = frame_start + (mark_out - mark_in)
+        creator_attributes["frame_start"] = frame_start
+        creator_attributes["frame_end"] = frame_end
+
         new_instance = CreatedInstance(
             self.family,
             subset_name,
@@ -630,10 +781,240 @@ class CreateRenderPass(TVPaintCreator):
                 "mark_for_review",
                 label="Review",
                 default=self.mark_for_review
+            ),
+            EnumDef(
+                "render_target",
+                label="Render Target",
+                items=[
+                    {"value": "local", "label": "Local"},
+                    {"value": "farm", "label": "Farm"}
+                ],
+                default="local"
             )
         ]
 
     def get_instance_attr_defs(self):
+        # Find available Render Layers
+        current_instances = self.create_context.instances
+        render_layers = [
+            {
+                "value": instance.id,
+                "label": instance.label
+            }
+            for instance in current_instances
+            if instance.creator_identifier == CreateRenderlayer.identifier
+        ]
+        if not render_layers:
+            render_layers.append({"value": None, "label": "N/A"})
+
+        return [
+            EnumDef(
+                "render_layer_instance_id",
+                label="Render Layer",
+                items=render_layers
+            ),
+            UILabelDef(
+                "NOTE: Try to hit refresh if you don't see a Render Layer"
+            ),
+            BoolDef(
+                "mark_for_review",
+                label="Review",
+                default=self.mark_for_review
+            ),
+            EnumDef(
+                "render_target",
+                label="Render Target",
+                items=[
+                    {"value": "local", "label": "Local"},
+                    {"value": "farm", "label": "Farm"}
+                ],
+                default="local"
+            ),
+            NumberDef(
+                "frame_start",
+                label="Frame Start",
+                minimum=0,
+                maximum=999999,
+                decimals=0,
+                default=0
+            ),
+            NumberDef(
+                "frame_end",
+                label="Frame End",
+                minimum=0,
+                maximum=999999,
+                decimals=0,
+                default=1
+            )
+        ]
+
+
+class CreateRenderPassesFromLayers(TVPaintCreator):
+    """Create missing render passes from layers in an existing render layer.
+
+    This creator allows users to select an existing render layer and
+    automatically generate render passes for any TVPaint layers in that
+    group that don't already have a render pass instance.
+    """
+
+    family = "render"
+    identifier = "render.passes.from.layers"
+    label = "Render Passes"
+    icon = "fa5.images"
+    description = "Create missing Render Passes from layers in a Render Layer."
+    order = CreateRenderPass.order + 5
+
+    # Settings
+    mark_for_review = True
+
+    def apply_settings(self, project_settings):
+        plugin_settings = (
+            project_settings["tvpaint"]["create"]["create_render_pass"]
+        )
+        self.mark_for_review = plugin_settings["mark_for_review"]
+
+    def collect_instances(self):
+        """Override to prevent collecting instances for this creator.
+
+        This creator does not persist instances - it only creates render
+        pass instances from the parent render pass creator.
+        """
+        pass
+
+    def create(self, subset_name, instance_data, pre_create_data):
+        """Create render passes for uncovered layers in the selected render layer.
+
+        Args:
+            subset_name (str): The subset name template (unused for this creator)
+            instance_data (dict): Instance data (unused for this creator)
+            pre_create_data (dict): Pre-create data with render_layer_instance_id
+
+        Raises:
+            CreatorError: If render layer is not selected or not found
+        """
+        render_layer_instance_id = pre_create_data.get(
+            "render_layer_instance_id"
+        )
+        if not render_layer_instance_id:
+            raise CreatorError(
+                "You must select a Render Layer to create render passes from."
+            )
+
+        render_layer_instance = self.create_context.instances_by_id.get(
+            render_layer_instance_id
+        )
+        if render_layer_instance is None:
+            raise CreatorError(
+                f"Render layer instance with id '{render_layer_instance_id}' "
+                "was not found."
+            )
+
+        group_id = render_layer_instance[
+            "creator_attributes"
+        ]["group_id"]
+
+        self.log.debug(
+            f"Creating missing render passes for render layer "
+            f"'{render_layer_instance['subset']}' (group {group_id})"
+        )
+
+        # Get all layers in the scene
+        layers_data = get_layers_data()
+        layers_in_group = [
+            layer for layer in layers_data
+            if layer["group_id"] == group_id
+        ]
+
+        if not layers_in_group:
+            self.log.info(
+                f"No layers found in group {group_id}. "
+                "No render passes will be created."
+            )
+            return
+
+        # Collect existing render pass layer names for this render layer
+        existing_layer_names = set()
+        for instance in self.create_context.instances:
+            if (
+                instance.creator_identifier == CreateRenderPass.identifier
+                and instance["creator_attributes"][
+                    "render_layer_instance_id"
+                ] == render_layer_instance_id
+            ):
+                existing_layer_names.update(instance["layer_names"])
+
+        # Get project and asset info from create context
+        project_name = self.create_context.get_current_project_name()
+        asset_name = self.create_context.get_current_asset_name()
+        task_name = self.create_context.get_current_task_name()
+        host_name = self.create_context.host_name
+
+        asset_doc = get_asset_by_name(project_name, asset_name)
+        render_pass_creator = self.create_context.creators[
+            CreateRenderPass.identifier
+        ]
+
+        # Create render passes for layers not yet covered
+        created_count = 0
+        for layer in layers_in_group:
+            layer_name = layer["name"]
+
+            # Skip if this layer already has a render pass
+            if layer_name in existing_layer_names:
+                self.log.debug(
+                    f"Render pass already exists for layer '{layer_name}'. "
+                    "Skipping."
+                )
+                continue
+
+            variant = layer_name
+
+            subset_name = render_pass_creator.get_subset_name(
+                variant,
+                task_name,
+                asset_doc,
+                project_name,
+                host_name=host_name
+            )
+
+            instance_data = {
+                "task": task_name,
+                "family": render_pass_creator.family,
+                "variant": variant
+            }
+
+            if AYON_SERVER_ENABLED:
+                instance_data["folderPath"] = asset_name
+            else:
+                instance_data["asset"] = asset_name
+
+            pre_create_data = {
+                "render_layer_instance_id": render_layer_instance_id,
+                "layer_names": [layer_name],
+                "mark_for_review": pre_create_data.get(
+                    "mark_for_review", self.mark_for_review
+                )
+            }
+
+            render_pass_creator.create(
+                subset_name, instance_data, pre_create_data
+            )
+            created_count += 1
+            self.log.debug(f"Created render pass for layer '{layer_name}'")
+
+        self.log.info(
+            f"Created {created_count} render pass(es) for render layer "
+            f"'{render_layer_instance['subset']}'"
+        )
+
+    def get_pre_create_attr_defs(self):
+        """Return attribute definitions for pre-create dialog.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for:
+                - render_layer_instance_id: Selection of existing render layer
+                - mark_for_review: Whether to mark created passes for review
+        """
         # Find available Render Layers
         current_instances = self.create_context.instances
         render_layers = [
@@ -1182,5 +1563,14 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
                 "mark_for_review",
                 label="Review",
                 default=self.mark_for_review
+            ),
+            EnumDef(
+                "render_target",
+                label="Render Target",
+                items=[
+                    {"value": "local", "label": "Local"},
+                    {"value": "farm", "label": "Farm"}
+                ],
+                default="local"
             )
         ]

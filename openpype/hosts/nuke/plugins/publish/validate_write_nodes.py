@@ -129,7 +129,7 @@ class ValidateNukeWriteNode(
                 and key != "file"
                 and key != "tile_color"
             ):
-                check.append([key, node_value, write_node[key].value()])
+                check.append([key, fixed_values[0], write_node[key].value()])
 
         if check:
             self._make_error(check)

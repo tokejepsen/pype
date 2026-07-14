@@ -16,6 +16,7 @@ from openpype.pipeline.workfile.lock_workfile import (
 from openpype.tools.utils import PlaceholderLineEdit
 from openpype.tools.utils.delegates import PrettyTimeDelegate
 from openpype.lib import emit_event
+from openpype.lib.path_tools import to_unc_path
 from openpype.tools.workfiles.lock_dialog import WorkfileLockDialog
 from openpype.pipeline import (
     registered_host,
@@ -627,7 +628,7 @@ class FilesWidget(QtWidgets.QWidget):
         #   - Qt will use 'cwd' instead, if path does not exist, which may lead
         #       to igniter directory
         while workfile_root:
-            if os.path.exists(workfile_root):
+            if os.path.exists(to_unc_path(workfile_root)):
                 break
             workfile_root = os.path.dirname(workfile_root)
 
@@ -649,7 +650,9 @@ class FilesWidget(QtWidgets.QWidget):
         if not work_filename:
             return None
 
-        src_path = self._get_selected_filepath()
+        selected_filepath = self._get_selected_filepath()
+        if selected_filepath is not None:
+            src_path = to_unc_path(selected_filepath)
 
         # Trigger before save event
         event_data_before = self._get_event_context_data()
@@ -671,7 +674,7 @@ class FilesWidget(QtWidgets.QWidget):
         )
 
         # Create workfiles root folder
-        if not os.path.exists(self._workfiles_root):
+        if not os.path.exists(to_unc_path(self._workfiles_root)):
             log.debug("Initializing Work Directory: %s", self._workfiles_root)
             os.makedirs(self._workfiles_root)
 

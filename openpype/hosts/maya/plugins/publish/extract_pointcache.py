@@ -45,8 +45,13 @@ class ExtractAlembic(publish.Extractor,
             return
 
         # Collect the start and end including handles
-        start = float(instance.data.get("frameStartHandle", 1))
-        end = float(instance.data.get("frameEndHandle", 1))
+        # If extractAt is set (model family), use it for both start and end
+        if "extractAt" in instance.data:
+            start = float(instance.data.get("extractAt", 1))
+            end = float(instance.data.get("extractAt", 1))
+        else:
+            start = float(instance.data.get("frameStartHandle", 1))
+            end = float(instance.data.get("frameEndHandle", 1))
 
         attrs = instance.data.get("attr", "").split(";")
         attrs = [value for value in attrs if value.strip()]
@@ -101,6 +106,10 @@ class ExtractAlembic(publish.Extractor,
         with suspended_refresh(suspend=suspend):
             with maintained_selection():
                 cmds.select(nodes, noExpand=True)
+                self.log.info("Extracting nodes: {}".format(nodes))
+                self.log.info("Extracting to: {}".format(path))
+                self.log.info("Extracting with options: {}".format(options))
+                self.log.info("Extracting from frame {} to {}".format(start, end))
                 extract_alembic(
                     file=path,
                     startFrame=start,

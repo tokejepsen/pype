@@ -276,7 +276,7 @@ from igniter.tools import (
 from igniter.bootstrap_repos import OpenPypeVersion  # noqa: E402
 
 bootstrap = BootstrapRepos()
-silent_commands = {"run", "igniter", "standalonepublisher",
+silent_commands = {"run", "run_module", "igniter", "standalonepublisher",
                    "extractenvironments", "version"}
 
 

@@ -32,6 +32,7 @@ from openpype.lib import (
     Logger,
     get_version_from_path,
     StringTemplate,
+    emit_event,
 )
 
 from openpype.settings import (
@@ -1297,8 +1298,8 @@ def create_write_node(
     anatomy_filled = format_anatomy(data)
 
     # build file path to workfiles
-    fdir = str(anatomy_filled["work"]["folder"]).replace("\\", "/")
-    data["work"] = fdir
+    data["work"] = str(anatomy_filled["work"]["folder"]).replace("\\", "/")
+    data["work_renders"] = str(anatomy_filled["work_renders"]["folder"]).replace("\\", "/")
     fpath = StringTemplate(data["fpath_template"]).format_strict(data)
 
     # create directory
@@ -2547,6 +2548,16 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                 asset_data.get('pixel_aspect', 1)),
             "name": project_name
         }
+
+        variable_mapping = {
+            "RESOLUTION_WIDTH": ("width", int),
+            "RESOLUTION_HEIGHT": ("height", int),
+            "PIXEL_ASPECT": ("pixel_aspect", float)
+        }
+        for var, (key, value_type) in variable_mapping.items():
+            env_var = "OPENPYPE_{}".format(var)
+            if env_var in os.environ:
+                format_data[key] = value_type(os.getenv(env_var))
 
         if any(x_ for x_ in format_data.values() if x_ is None):
             msg = ("Missing set shot attributes in DB."

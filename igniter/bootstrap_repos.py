@@ -12,7 +12,7 @@ from typing import Union, Callable, List, Tuple
 import hashlib
 import platform
 
-from zipfile import ZipFile, BadZipFile
+from zipfile import ZipFile, BadZipFile, ZIP_DEFLATED
 
 from appdirs import user_data_dir
 from speedcopy import copyfile
@@ -835,7 +835,7 @@ class BootstrapRepos:
 
         openpype_inc = 98.0 / float(openpype_files)
 
-        with ZipFile(zip_path, "w") as zip_file:
+        with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as zip_file:
             progress = 0
             openpype_root = openpype_path.resolve()
             # generate list of filtered paths

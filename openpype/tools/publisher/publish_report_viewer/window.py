@@ -164,21 +164,8 @@ class PublisherReportHandler:
         if self._reports is not None:
             return self._reports
 
-        reports = []
-        reports_by_id = {}
-        report_dir = get_reports_dir()
-        for filename in os.listdir(report_dir):
-            ext = os.path.splitext(filename)[-1]
-            if ext == ".json":
-                continue
-            filepath = os.path.join(report_dir, filename)
-            item = PublishReportItem.from_filepath(filepath)
-            reports.append(item)
-            reports_by_id[item.id] = item
-
-        self._reports = reports
-        self._reports_by_id = reports_by_id
-        return reports
+        self._reports = []
+        return self._reports
 
     def remove_report_items(self, item_id):
         item = self._reports_by_id.get(item_id)
@@ -242,7 +229,6 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             report_item = self._report_items_by_id.get(item_id)
             if report_item is not None:
                 report_item.label = value
-                report_item.save()
                 value = report_item.label
 
         return super(LoadedFilesModel, self).setData(index, value, role)
@@ -297,7 +283,6 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
                 continue
 
             new_items.append(item)
-            report_item.save()
             self._items_by_id[report_item.id] = item
             self._report_items_by_id[report_item.id] = report_item
 
@@ -447,7 +432,7 @@ class LoadedFilesWidget(QtWidgets.QWidget):
             for url in mime_data.urls():
                 filepath = url.toLocalFile()
                 ext = os.path.splitext(filepath)[-1]
-                if os.path.exists(filepath) and ext == ".json":
+                if os.path.exists(filepath) and ext in (".json", ".txt"):
                     filepaths.append(filepath)
             self._add_filepaths(filepaths)
         event.accept()

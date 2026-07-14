@@ -28,12 +28,8 @@ class ExtractFBXAnimation(publish.Extractor):
     def process(self, instance):
         # Define output path
         staging_dir = self.staging_dir(instance)
-        filename = "{0}.fbx".format(instance.name)
-        path = os.path.join(staging_dir, filename)
-        path = path.replace("\\", "/")
 
         fbx_exporter = fbx.FBXExtractor(log=self.log)
-        out_members = instance.data.get("animated_skeleton", [])
 
         start_frame = int(
             cmds.playbackOptions(query=True,animationStartTime=True)
@@ -58,39 +54,40 @@ class ExtractFBXAnimation(publish.Extractor):
         end = (instance.data.get("frameEndHandle") or instance.context.data.get("frameEndHandle"))
         cmds.playbackOptions(minTime=start, maxTime=end)
 
-        # Export from the rig's namespace so that the exported
-        # FBX does not include the namespace but preserves the node
-        # names as existing in the rig workfile
-        if not out_members:
-            skeleton_set = [
-                i for i in instance
-                if i.endswith("skeletonAnim_SET")
-            ]
-            self.log.debug(
-                "Top group of animated skeleton not found in "
-                "{}.\nSkipping fbx animation extraction.".format(skeleton_set))
-            return
-
-        namespace = get_namespace(out_members[0])
-        relative_out_members = [
-            strip_namespace(node, namespace) for node in out_members
-        ]
-        with namespaced(
-            ":" + namespace,
-            new=False,
-            relative_names=True
-        ) as namespace:
-            fbx_exporter.export(relative_out_members, path)
-
-        cmds.playbackOptions(minTime=start_frame, maxTime=end_frame)
-
         representations = instance.data.setdefault("representations", [])
-        representations.append({
-            'name': 'fbx',
-            'ext': 'fbx',
-            'files': filename,
-            "stagingDir": staging_dir
-        })
 
-        self.log.debug(
-            "Extracted FBX animation to: {0}".format(path))
+        for skeleton_set, out_members in instance.data.get("animated_skeletons", {}).items():
+            filename = "{0}.fbx".format(skeleton_set)
+            path = os.path.join(staging_dir, filename)
+            path = path.replace("\\", "/")
+
+            # Export from the rig's namespace so that the exported
+            # FBX does not include the namespace but preserves the node
+            # names as existing in the rig workfile
+            namespace = get_namespace(out_members[0])
+            relative_out_members = [
+                strip_namespace(node, namespace) for node in out_members
+            ]
+            with namespaced(
+                ":" + namespace,
+                new=False,
+                relative_names=True
+            ) as namespace:
+                fbx_exporter.export(relative_out_members, path)
+
+            representations.append({
+                'name': skeleton_set,
+                'ext': 'fbx',
+                'files': filename,
+                "stagingDir": staging_dir,
+                "outputName": skeleton_set
+            })
+
+            self.log.debug("Extracted FBX animation to: {0}".format(path))
+
+        cmds.playbackOptions(
+            animationStartTime=start_frame,
+            animationEndTime=end_frame,
+            minTime=start_frame,
+            maxTime=end_frame
+        )

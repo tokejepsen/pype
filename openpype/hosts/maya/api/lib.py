@@ -34,7 +34,7 @@ from openpype.pipeline import (
     load_container,
     registered_host
 )
-from openpype.lib import NumberDef
+from openpype.lib import NumberDef, TextDef
 from openpype.pipeline.context_tools import get_current_project_asset
 from openpype.pipeline.create import CreateContext
 from openpype.lib.profiles_filtering import filter_profiles
@@ -416,6 +416,11 @@ def collect_animation_defs(fps=False):
                           "A 0.2 step size is five samples per frame.",
                   default=1.0,
                   decimals=3),
+        TextDef("explicitFrames",
+                  label="Explicit Frames",
+                  tooltip="A list of explicit frames to include in the animation.",
+                  placeholder="1, 3, 5, 7",
+                  multiline=True),
     ]
 
     if fps:
@@ -476,7 +481,12 @@ def imprint(node, data):
         else:
             raise TypeError("Unsupported type: %r" % type(value))
 
-        cmds.addAttr(node, longName=key, **add_type)
+        # Skip addAttr when the attribute already exists. This handles
+        # referenced nodes where imprint_instance_node intentionally skips
+        # deleteAttr to avoid recording destructive reference edits; in that
+        # case the attribute is already present and only needs a setAttr.
+        if not cmds.attributeQuery(key, node=node, exists=True):
+            cmds.addAttr(node, longName=key, **add_type)
         cmds.setAttr(node + "." + key, value, **set_type)
 
 
@@ -4006,3 +4016,22 @@ def create_rig_animation_instance(
             variant=namespace,
             pre_create_data={"use_selection": True}
         )
+
+
+def remove_namespaces_from_file(path, namespaces_to_remove):
+    """Remove namespaces from Maya ASCII file.
+
+    Args:
+        path (str): Path to Maya ASCII file.
+        namespaces_to_remove (list): List of namespaces to remove.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        contents = f.read()
+
+    for namespace in namespaces_to_remove:
+        contents = contents.replace(f'-ns "{namespace}"', '-ns ":"')
+        contents = contents.replace(f'|{namespace}:', '|')
+        contents = contents.replace(f'{namespace}:', '')
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(contents)

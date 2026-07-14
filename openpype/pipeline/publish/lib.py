@@ -32,6 +32,7 @@ from .constants import (
 )
 
 
+
 def get_template_name_profiles(
     project_name, project_settings=None, logger=None
 ):
@@ -495,8 +496,7 @@ def filter_pyblish_plugins(plugins):
 
     # iterate over plugins
     for plugin in plugins[:]:
-        # Apply settings to plugins
-
+        # Apply settings to plugin classes
         apply_settings_func = getattr(plugin, "apply_settings", None)
         if apply_settings_func is not None:
             # Use classmethod 'apply_settings'
@@ -919,6 +919,9 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     new_scene = _clean_name(file_path)
     orig_scene = _clean_name(instance.context.data["currentFile"])
     expected_files = instance.data.get("expectedFiles")
+
+    if not expected_files:
+        return file_path
 
     if isinstance(expected_files[0], dict):
         # we have aovs and we need to iterate over them

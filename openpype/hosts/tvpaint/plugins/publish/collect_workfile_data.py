@@ -53,6 +53,31 @@ class ResetTVPaintWorkfileMetadata(pyblish.api.Action):
                 write_workfile_metadata(metadata_key, default)
 
 
+class CollectLaunchEnvironmentContext(pyblish.api.ContextPlugin):
+    """Capture environment context before any collector can modify os.environ.
+
+    CollectFromCreateContext (order CollectorOrder - 0.5) reads the workfile
+    context and overwrites os.environ["AVALON_TASK"] with the workfile task.
+    This collector runs at order CollectorOrder - 0.501, before that, so it
+    captures the true launched environment values.
+    """
+
+    label = "Collect Launch Environment Context"
+    order = pyblish.api.CollectorOrder - 0.501
+    hosts = ["tvpaint"]
+
+    def process(self, context):
+        env_context = {
+            "project_name": os.environ.get("AVALON_PROJECT"),
+            "asset_name": os.environ.get("AVALON_ASSET"),
+            "task_name": os.environ.get("AVALON_TASK"),
+        }
+        self.log.debug(
+            "Launch environment context: {}".format(env_context)
+        )
+        context.data["env_context"] = env_context
+
+
 class CollectWorkfileData(pyblish.api.ContextPlugin):
     label = "Collect Workfile Data"
     order = pyblish.api.CollectorOrder - 0.45
@@ -70,6 +95,10 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
             "task_name": context.data["task"]
         }
         self.log.debug("Current context is: {}".format(current_context))
+
+        # env_context is set by CollectLaunchEnvironmentContext which runs
+        # at CollectorOrder - 0.501, before CollectFromCreateContext overwrites
+        # os.environ with the workfile task.
 
         # Collect context from workfile metadata
         self.log.info("Collecting workfile context")

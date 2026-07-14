@@ -1,6 +1,9 @@
+from maya import cmds
+
 from openpype.hosts.maya.api import plugin
 from openpype.lib import (
     BoolDef,
+    NumberDef,
     TextDef
 )
 
@@ -20,6 +23,12 @@ class CreateModel(plugin.MayaCreator):
     def get_instance_attr_defs(self):
 
         return [
+            NumberDef("extractAt",
+                      label="Extract At Frame",
+                      tooltip="Frame at which to extract the model geometry",
+                      minimum=-999999,
+                      default=int(cmds.currentTime(query=True)),
+                      decimals=0),
             BoolDef("writeColorSets",
                     label="Write vertex colors",
                     tooltip="Write vertex colors with the geometry",

@@ -193,10 +193,15 @@ class MayaCreatorBase(object):
         # the relevant keys as a string
         data["__creator_attributes_keys"] = ",".join(creator_attributes.keys())
 
-        # Kill any existing attributes just so we can imprint cleanly again
-        for attr in data.keys():
-            if cmds.attributeQuery(attr, node=node, exists=True):
-                cmds.deleteAttr("{}.{}".format(node, attr))
+        # Kill any existing attributes just so we can imprint cleanly again.
+        # Skip deleteAttr for referenced nodes: calling deleteAttr on a
+        # referenced node records a 'deleteAttr' reference edit which, on
+        # reload, collapses the earlier addAttr/setAttr edits for that node.
+        is_referenced = cmds.referenceQuery(node, isNodeReferenced=True)
+        if not is_referenced:
+            for attr in data.keys():
+                if cmds.attributeQuery(attr, node=node, exists=True):
+                    cmds.deleteAttr("{}.{}".format(node, attr))
 
         return imprint(node, data)
 
@@ -243,7 +248,7 @@ class MayaCreatorBase(object):
         cached_subsets = self.collection_shared_data["maya_cached_subsets"]
         for node in cached_subsets.get(self.identifier, []):
             node_data = self.read_instance_node(node)
-
+            print("Collected instance data: {}".format(node_data))
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
 
@@ -616,8 +621,6 @@ class Loader(LoaderPlugin):
             loader_key (str): key to get separate configuration from Settings
                 ('reference_loader'|'import_loader')
         """
-
-        options["attach_to_root"] = True
         custom_naming = self.load_settings[loader_key]
 
         if not custom_naming['namespace']:

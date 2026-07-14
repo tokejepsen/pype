@@ -2,10 +2,11 @@ from collections import defaultdict
 import pyblish.api
 from openpype.pipeline.publish import (
     PublishXmlValidationError,
+    OptionalPyblishPluginMixin,
 )
 
 
-class ValidateSubsetUniqueness(pyblish.api.ContextPlugin):
+class ValidateSubsetUniqueness(pyblish.api.ContextPlugin, OptionalPyblishPluginMixin):
     """Validate all subset names are unique.
 
     This only validates whether the instances currently set to publish from
@@ -24,8 +25,12 @@ class ValidateSubsetUniqueness(pyblish.api.ContextPlugin):
     label = "Validate Subset Uniqueness"
     order = pyblish.api.ValidatorOrder
     families = ["*"]
+    optional = True
+
 
     def process(self, context):
+        if not self.is_active(context.data):
+            return
 
         # Find instance per (asset,subset)
         instance_per_asset_subset = defaultdict(list)

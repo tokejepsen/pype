@@ -2,9 +2,13 @@ import pyblish.api
 
 from openpype.lib import version_up
 from openpype.pipeline import registered_host
+from openpype.pipeline import OptionalPyblishPluginMixin
 
 
-class IncrementWorkfileVersion(pyblish.api.ContextPlugin):
+class IncrementWorkfileVersion(
+    OptionalPyblishPluginMixin,
+    pyblish.api.ContextPlugin
+):
     """Increment current workfile version."""
 
     order = pyblish.api.IntegratorOrder + 1
@@ -13,6 +17,8 @@ class IncrementWorkfileVersion(pyblish.api.ContextPlugin):
     hosts = ["tvpaint"]
 
     def process(self, context):
+        if not self.is_active(context.data):
+            return
 
         assert all(result["success"] for result in context.data["results"]), (
             "Publishing not successful so version is not increased.")

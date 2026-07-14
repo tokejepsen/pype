@@ -1591,6 +1591,12 @@ class BasePublisherController(AbstractPublisherController):
             self._publish_error_msg = value
             self._emit_event("publish.publish_error.changed", {"value": value})
 
+    def _get_reset_plugins(self):
+        return self._reset_plugins
+
+    def _set_reset_plugins(self, value):
+        self._reset_plugins = bool(value)
+
     host_is_valid = property(
         _get_host_is_valid, _set_host_is_valid
     )
@@ -1620,6 +1626,9 @@ class BasePublisherController(AbstractPublisherController):
     )
     publish_error_msg = property(
         _get_publish_error_msg, _set_publish_error_msg
+    )
+    reset_plugins = property(
+        _get_reset_plugins, _set_reset_plugins
     )
 
     def _reset_attributes(self):
@@ -1720,6 +1729,9 @@ class PublisherController(BasePublisherController):
         # This information is not much important for controller but for widget
         #   which can change (and set) the comment.
         self._publish_comment_is_set = False
+
+        # Controls whether plugin discovery caches are cleared on each reset
+        self._reset_plugins = True
 
         # Validation order
         # - plugin with order same or higher than this value is extractor or
@@ -1858,9 +1870,10 @@ class PublisherController(BasePublisherController):
 
         self._asset_docs_cache.reset()
 
-        self._reset_plugins()
+        self._do_reset_plugins()
         # Publish part must be reset after plugins
         self._reset_publish()
+
         self._reset_instances()
 
         self._create_context.reset_finalization()
@@ -1869,14 +1882,16 @@ class PublisherController(BasePublisherController):
 
         self.emit_card_message("Refreshed..")
 
-    def _reset_plugins(self):
+    def _do_reset_plugins(self):
         """Reset to initial state."""
         if self._resetting_plugins:
             return
 
         self._resetting_plugins = True
 
-        self._create_context.reset_plugins()
+        self._create_context.reset_plugins(
+            reset_plugins=self._reset_plugins
+        )
         # Reset creator items
         self._creator_items = None
 
