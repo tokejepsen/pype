@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Missing sound clip file(s)</title>
+<description>
+## Sound clip file(s) not found
+
+The scene references {missing_count} sound clip file(s) that cannot be located on disk:
+
+{missing_files_list}
+
+### Why this matters
+
+When the render job runs on the Deadline farm worker, TVPaint will load this scene
+in a headless process. The native TVPaint dialog "Missing sound dependencies:
+Alternative Paths" will appear when it tries to load these missing sound files.
+Since there is no operator to interact with the dialog, the Deadline worker will
+hang indefinitely, and the job will eventually timeout without producing any renders.
+
+### How to repair
+
+You have four options:
+
+1. **Delete all missing sound clips**: Right-click this validation error and use the
+   **Delete Missing Sound Clips** action to automatically remove every sound clip
+   whose audio file cannot be found.
+
+2. **Relink the audio file**: In TVPaint's Sound panel, right-click the broken sound
+   clip and relink it to the correct audio file location.
+
+3. **Update the file path**: If the audio file was moved, restore it to the original
+   location, or relink all sound clips to their new locations.
+
+4. **Remove the sound clip**: If the audio is no longer needed, delete the sound clip
+   from the Sound panel before re-publishing.
+
+After making any changes, save the workfile and publish again.
+</description>
+</error>
+</root>
