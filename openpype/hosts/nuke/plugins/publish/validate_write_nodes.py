@@ -5,7 +5,8 @@ from openpype.pipeline.publish import get_errored_instances_from_context
 from openpype.hosts.nuke.api.lib import (
     get_write_node_template_attr,
     set_node_knobs_from_settings,
-    color_gui_to_int
+    color_gui_to_int,
+    is_knob_value_acceptable_in_settings
 )
 
 from openpype.pipeline.publish import (
@@ -103,33 +104,23 @@ class ValidateNukeWriteNode(
                 )
 
             key = knob_data["name"]
+
+            # Skip validation for knobs without multi-value config
+            if key not in write_node.knobs():
+                continue
+
+            # Skip file and tile_color as they're not strictly validated
+            if key in ("file", "tile_color"):
+                continue
+
             values = values_by_name[key]
-            node_value = write_node[key].value()
 
-            # fix type differences
-            fixed_values = []
-            for value in values:
-                if type(node_value) in (int, float):
-                    try:
-                        if isinstance(value, list):
-                            value = color_gui_to_int(value)
-                        else:
-                            value = float(value)
-                            node_value = float(node_value)
-                    except ValueError:
-                        value = str(value)
-                else:
-                    value = str(value)
-                    node_value = str(node_value)
+            # Use shared helper to check if current value is acceptable
+            if is_knob_value_acceptable_in_settings(write_node, key, values):
+                continue
 
-                fixed_values.append(value)
-
-            if (
-                node_value not in fixed_values
-                and key != "file"
-                and key != "tile_color"
-            ):
-                check.append([key, fixed_values[0], write_node[key].value()])
+            # Not acceptable - report the first valid value as the expected one
+            check.append([key, values[0], write_node[key].value()])
 
         if check:
             self._make_error(check)

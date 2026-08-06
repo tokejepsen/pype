@@ -1287,9 +1287,12 @@ def create_write_node(
         subset=subset
     )
 
+    # Use first file_type value to match whichever setting gets actually applied
+    ext = "exr"
     for knob in imageio_writes["knobs"]:
         if knob["name"] == "file_type":
             ext = knob["value"]
+            break
 
     data.update({
         "imageio_writes": imageio_writes,
@@ -1697,16 +1700,30 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
     """ Overriding knob values from settings
 
     Using `schema_nuke_knob_inputs` for knob type definitions.
+    Respects multi-value knob settings: skips re-setting a knob if its
+    current value is already one of the acceptable configured values.
 
     Args:
         node (nuke.Node): nuke node
         knob_settings (list): list of dict. Keys are `type`, `name`, `value`
         kwargs (dict)[optional]: keys for formattable knob settings
     """
+    from collections import defaultdict
+    # Group setting values by knob name to detect multi-value knobs
+    values_by_name = defaultdict(list)
+    for knob in knob_settings:
+        values_by_name[knob["name"]].append(knob["value"])
+
+    seen_knobs = set()
     for knob in knob_settings:
         log.debug("__ knob: {}".format(pformat(knob)))
         knob_type = knob["type"]
         knob_name = knob["name"]
+
+        # Skip if already processed this knob name (handles multi-value knobs)
+        if knob_name in seen_knobs:
+            continue
+        seen_knobs.add(knob_name)
 
         if knob_name not in node.knobs():
             continue
@@ -1744,6 +1761,12 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
         if not knob_value:
             continue
 
+        # Skip re-setting if current value already matches one of the acceptable values
+        if len(values_by_name[knob_name]) > 1:
+            if is_knob_value_acceptable_in_settings(node, knob_name, values_by_name[knob_name]):
+                log.debug("Skipping knob '{}' re-set: current value already acceptable".format(knob_name))
+                continue
+
         knob_value = convert_knob_value_to_correct_type(
             knob_type, knob_value)
 
@@ -1777,6 +1800,55 @@ def color_gui_to_int(color_gui):
     hex_value = (
         "0x{0:0>2x}{1:0>2x}{2:0>2x}{3:0>2x}").format(*color_gui)
     return int(hex_value, 16)
+
+
+def is_knob_value_acceptable_in_settings(node, knob_name, setting_values):
+    """Check if node's current knob value is already one of the acceptable settings values.
+
+    Args:
+        node (nuke.Node): the node to check
+        knob_name (str): name of the knob
+        setting_values (list): list of acceptable values from settings (same type as stored)
+
+    Returns:
+        bool: True if current value matches one of setting_values (after type coercion)
+    """
+    if knob_name not in node.knobs():
+        return False
+
+    try:
+        node_value = node[knob_name].value()
+    except Exception:
+        return False
+
+    # Normalize all values for comparison, handling type differences
+    for setting_value in setting_values:
+        try:
+            # Coerce to common comparable forms
+            if isinstance(setting_value, list):
+                # color_gui case: convert list to int
+                if len(setting_value) >= 4:
+                    setting_value = color_gui_to_int(setting_value)
+                    if isinstance(node_value, int) and node_value == setting_value:
+                        return True
+                    continue
+
+            # Try numeric comparison
+            if isinstance(node_value, (int, float)):
+                try:
+                    setting_value_num = float(setting_value)
+                    if float(node_value) == setting_value_num:
+                        return True
+                except (ValueError, TypeError):
+                    pass
+
+            # String comparison
+            if str(node_value) == str(setting_value):
+                return True
+        except Exception:
+            continue
+
+    return False
 
 
 @deprecated
@@ -2361,8 +2433,28 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                 return
 
             try:
+                from collections import defaultdict
+                # Group setting values by knob name to detect multi-value knobs
+                values_by_name = defaultdict(list)
+                for knob in nuke_imageio_writes["knobs"]:
+                    values_by_name[knob["name"]].append(knob["value"])
+
+                seen_knobs = set()
                 # write all knobs to node
                 for knob in nuke_imageio_writes["knobs"]:
+                    knob_name = knob["name"]
+
+                    # Skip if already processed this knob name (handles multi-value knobs)
+                    if knob_name in seen_knobs:
+                        continue
+                    seen_knobs.add(knob_name)
+
+                    # Skip re-setting if current value already matches one of the acceptable values
+                    if len(values_by_name[knob_name]) > 1:
+                        if is_knob_value_acceptable_in_settings(write_node, knob_name, values_by_name[knob_name]):
+                            log.debug("Skipping knob '{}' re-set: current value already acceptable".format(knob_name))
+                            continue
+
                     value = knob["value"]
                     if isinstance(value, six.text_type):
                         value = str(value)
@@ -2370,9 +2462,9 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                         value = int(value, 16)
 
                     log.debug("knob: {}| value: {}".format(
-                        knob["name"], value
+                        knob_name, value
                     ))
-                    write_node[knob["name"]].setValue(value)
+                    write_node[knob_name].setValue(value)
             except TypeError:
                 log.warning(
                     "Legacy workflow didn't work, switching to current")
