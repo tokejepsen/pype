@@ -125,10 +125,22 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
         first_frame = int(nuke.root()["first_frame"].getValue())
         last_frame = int(nuke.root()["last_frame"].getValue())
 
+        # Explicitly collect the write node's own "limit" checkbox and its
+        # frame range as separate instance data. This is kept separate from
+        # the resolved first_frame/last_frame below so that the farm
+        # submission plugin can make its own explicit decision about which
+        # range to submit to Deadline.
+        use_limit = write_node["use_limit"].getValue()
+        instance.data["writeNodeFrameRangeLimitEnabled"] = use_limit
+        instance.data["writeNodeFrameRangeLimitFirst"] = int(
+            write_node["first"].getValue())
+        instance.data["writeNodeFrameRangeLimitLast"] = int(
+            write_node["last"].getValue())
+
         # Get frame range from write node if activated
-        if write_node["use_limit"].getValue():
-            first_frame = int(write_node["first"].getValue())
-            last_frame = int(write_node["last"].getValue())
+        if use_limit:
+            first_frame = instance.data["writeNodeFrameRangeLimitFirst"]
+            last_frame = instance.data["writeNodeFrameRangeLimitLast"]
 
         # add to cache
         self._frame_ranges[instance_name] = (first_frame, last_frame)

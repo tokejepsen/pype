@@ -118,8 +118,29 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         self._ver = re.search(r"\d+\.\d+", context.data.get("hostVersion"))
         self._deadline_user = context.data.get(
             "deadlineUser", getpass.getuser())
-        submit_frame_start = int(instance.data["frameStartHandle"])
-        submit_frame_end = int(instance.data["frameEndHandle"])
+
+        # The write node's "limit" checkbox is the artist's explicit choice
+        # for the farm render range and takes priority over the fallback to
+        # asset/root frame range, which may have been used if the limit was
+        # not enabled at collection time.
+        if instance.data.get("writeNodeFrameRangeLimitEnabled"):
+            submit_frame_start = int(
+                instance.data["writeNodeFrameRangeLimitFirst"])
+            submit_frame_end = int(
+                instance.data["writeNodeFrameRangeLimitLast"])
+            # Also overwrite instance frame range data so the downstream
+            # publish job (metadata.json / representations) matches the
+            # actual submitted render range instead of the stale collected
+            # fallback.
+            handle_start = instance.data["handleStart"]
+            handle_end = instance.data["handleEnd"]
+            instance.data["frameStart"] = submit_frame_start + handle_start
+            instance.data["frameEnd"] = submit_frame_end - handle_end
+            instance.data["frameStartHandle"] = submit_frame_start
+            instance.data["frameEndHandle"] = submit_frame_end
+        else:
+            submit_frame_start = int(instance.data["frameStartHandle"])
+            submit_frame_end = int(instance.data["frameEndHandle"])
 
         # get output path
         render_path = instance.data['path']
