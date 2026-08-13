@@ -9,7 +9,7 @@ from openpype.hosts.maya.api.lib import (
     maintained_selection,
     remove_namespaces_from_file,
 )
-from openpype.lib import TextDef
+from openpype.lib import BoolDef, TextDef
 from openpype.pipeline.publish import OpenPypePyblishPluginMixin
 
 
@@ -20,11 +20,21 @@ class ExtractRig(publish.Extractor, OpenPypePyblishPluginMixin):
     hosts = ["maya"]
     families = ["rig"]
     scene_type = "ma"
+    preserve_references = False
     namespaces_to_remove = ""
 
     @classmethod
     def get_attribute_defs(cls):
         return [
+            BoolDef(
+                "preserve_references",
+                label="Preserve References",
+                tooltip=(
+                    "Keep references as references in the published rig "
+                    "instead of importing (flattening) them into the file."
+                ),
+                default=cls.preserve_references
+            ),
             TextDef(
                 "namespaces_to_remove",
                 label="Namespaces to Remove",
@@ -55,6 +65,12 @@ class ExtractRig(publish.Extractor, OpenPypePyblishPluginMixin):
         filename = "{0}.{1}".format(instance.name, self.scene_type)
         path = os.path.join(dir_path, filename)
 
+        # Get attribute values
+        attribute_values = self.get_attr_values_from_data(instance.data)
+        preserve_references = attribute_values.get(
+            "preserve_references", self.preserve_references
+        )
+
         # Perform extraction
         self.log.debug("Performing extraction ...")
         with maintained_selection():
@@ -63,13 +79,11 @@ class ExtractRig(publish.Extractor, OpenPypePyblishPluginMixin):
                       force=True,
                       typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
                       exportSelected=True,
-                      preserveReferences=False,
+                      preserveReferences=preserve_references,
                       channels=True,
                       constraints=True,
                       expressions=True,
                       constructionHistory=True)
-
-        attribute_values = self.get_attr_values_from_data(instance.data)
         namespaces_to_remove = attribute_values.get("namespaces_to_remove", "")
         namespaces_to_remove = [s.strip() for s in namespaces_to_remove.split(",") if s]
         if namespaces_to_remove:
