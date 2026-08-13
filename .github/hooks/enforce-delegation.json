@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/enforce-delegation.ps1",
+        "windows": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/enforce-delegation.ps1",
+        "timeout": 15
+      }
+    ],
+    "SubagentStart": [
+      {
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/enforce-delegation.ps1",
+        "windows": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/enforce-delegation.ps1",
+        "timeout": 15
+      }
+    ],
+    "SubagentStop": [
+      {
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/enforce-delegation.ps1",
+        "windows": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/enforce-delegation.ps1",
+        "timeout": 15
+      }
+    ]
+  }
+}
