@@ -63,6 +63,7 @@ class CreateAnimationModel(BaseSettingsModel):
         title="Include Parent Hierarchy")
     include_user_defined_attributes: bool = Field(
         title="Include User Defined Attributes")
+    include_skeleton_mesh: bool = Field(title="Include Skeleton Mesh")
     default_variants: list[str] = Field(
         default_factory=list,
         title="Default Products"
@@ -277,6 +278,7 @@ DEFAULT_CREATORS_SETTINGS = {
         "write_face_sets": False,
         "include_parent_hierarchy": False,
         "include_user_defined_attributes": False,
+        "include_skeleton_mesh": False,
         "default_variants": [
             "Main"
         ]

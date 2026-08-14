@@ -25,6 +25,7 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     write_face_sets = False
     include_parent_hierarchy = False
     include_user_defined_attributes = False
+    include_skeleton_mesh = False
 
     def get_instance_attr_defs(self):
 
@@ -57,6 +58,11 @@ class CreateAnimation(plugin.MayaHiddenCreator):
                     tooltip="Whether to include parent hierarchy of nodes in "
                             "the publish instance",
                     default=self.include_parent_hierarchy),
+            BoolDef("includeSkeletonMesh",
+                    label="Include Skeleton Mesh",
+                    tooltip="Include the meshes skinned to the skeleton in "
+                            "the FBX animation export",
+                    default=self.include_skeleton_mesh),
             BoolDef("worldSpace",
                     label="World-Space Export",
                     default=True),

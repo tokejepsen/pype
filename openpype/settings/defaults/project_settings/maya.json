@@ -561,6 +561,7 @@
             "write_face_sets": false,
             "include_parent_hierarchy": false,
             "include_user_defined_attributes": false,
+            "include_skeleton_mesh": false,
             "default_variants": [
                 "Main"
             ]

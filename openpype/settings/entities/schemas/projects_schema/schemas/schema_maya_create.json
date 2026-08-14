@@ -152,6 +152,11 @@
                     "label": "Include User Defined Attributes"
                 },
                 {
+                    "type": "boolean",
+                    "key": "include_skeleton_mesh",
+                    "label": "Include Skeleton Mesh"
+                },
+                {
                     "type": "list",
                     "key": "default_variants",
                     "label": "Default Variants",

@@ -42,8 +42,11 @@ class ExtractFBXAnimation(publish.Extractor):
         instance.data["constraints"] = False
         instance.data["skeletonDefinitions"] = True
         instance.data["referencedAssetsContent"] = True
-        instance.data["shapes"] = False
-        instance.data["skins"] = False
+        # Meshes and their skinning must be exported when the skeleton mesh
+        # is included, otherwise only the joints end up in the FBX.
+        include_mesh = instance.data.get("skeleton_mesh_included", False)
+        instance.data["shapes"] = include_mesh
+        instance.data["skins"] = include_mesh
         instance.data["inputConnections"] = False
         instance.data["lights"] = False
         fbx_exporter.set_options_from_instance(instance)
