@@ -45,7 +45,8 @@ class ExtractFBXAnimation(publish.Extractor):
         # Meshes and their skinning must be exported when the skeleton mesh
         # is included, otherwise only the joints end up in the FBX.
         include_mesh = instance.data.get("skeleton_mesh_included", False)
-        instance.data["shapes"] = include_mesh
+        # Shapes must always be True to preserve blendshape target geometry and animation
+        instance.data["shapes"] = True
         instance.data["skins"] = include_mesh
         instance.data["inputConnections"] = False
         instance.data["lights"] = False

@@ -2,6 +2,7 @@
 from maya import cmds  # noqa
 import pyblish.api
 from openpype.pipeline import OptionalPyblishPluginMixin
+from openpype.hosts.maya.api.lib import get_namespace
 
 
 class CollectFbxAnimation(pyblish.api.InstancePlugin,
@@ -56,15 +57,29 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
                     mesh_content = self.get_skinned_meshes(skeleton_content)
                     if mesh_content:
                         self.log.debug(
-                            "Derived skinned meshes for {}: {}".format(
+                            "Derived meshes for {}: {}".format(
                                 skeleton_set, mesh_content
                             ))
-                    else:
-                        self.log.warning(
-                            "Could not resolve any skinned meshes for {}; "
-                            "FBX will contain the skeleton only.".format(
-                                skeleton_set
-                            ))
+
+                # Always collect blendshape-deformed meshes
+                namespace = get_namespace(skeleton_set)
+                blendshape_meshes = self.get_blendshape_meshes(namespace)
+                # Deduplicate against already collected meshes
+                for mesh in blendshape_meshes:
+                    if mesh not in mesh_content:
+                        mesh_content.append(mesh)
+                if blendshape_meshes:
+                    self.log.debug(
+                        "Added blendshape meshes for {}: {}".format(
+                            skeleton_set, blendshape_meshes
+                        ))
+
+                if not mesh_content:
+                    self.log.warning(
+                        "Could not resolve any meshes for {}; "
+                        "FBX will contain the skeleton only.".format(
+                            skeleton_set
+                        ))
 
                 if mesh_content:
                     skeleton_content = skeleton_content + mesh_content
@@ -142,3 +157,86 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
                 result.append(mesh)
 
         return result
+
+    def _to_transforms(self, nodes):
+        """Convert shapes to transforms and deduplicate.
+
+        Args:
+            nodes (list): Nodes (shapes or transforms) to convert.
+
+        Returns:
+            list: Long names of transform nodes, deduplicated.
+        """
+        meshes = []
+        for node in nodes:
+            # Convert shape to transform if needed
+            if cmds.objectType(node, isAType="shape"):
+                parents = cmds.listRelatives(
+                    node,
+                    parent=True,
+                    fullPath=True
+                ) or []
+                if parents:
+                    meshes.append(parents[0])
+            else:
+                # Normalize to long path for consistent deduplication
+                long_names = cmds.ls(node, long=True) or []
+                if long_names:
+                    meshes.append(long_names[0])
+
+        # Deduplicate while preserving order
+        seen = set()
+        result = []
+        for mesh in meshes:
+            if mesh not in seen:
+                seen.add(mesh)
+                result.append(mesh)
+
+        return result
+
+    def get_blendshape_meshes(self, namespace):
+        """Derive mesh transforms for blendShape deformed and target geo.
+
+        Args:
+            namespace (str): Namespace to limit search, empty string for root.
+
+        Returns:
+            list: Long names of transform nodes for deformed and target
+                  blendshape meshes.
+        """
+        # Don't scan entire scene for blendShapes if no namespace given
+        if not namespace:
+            return []
+
+        # List blendShape nodes in the namespace (including nested)
+        prefix = "{}:".format(namespace)
+        blendshape_nodes = [
+            node for node in cmds.ls(type="blendShape") or []
+            if node.rsplit("|", 1)[-1].startswith(prefix)
+        ]
+
+        # Collect deformed geometry
+        deformed_nodes = []
+        for blendshape_node in blendshape_nodes:
+            geometry = cmds.blendShape(
+                blendshape_node,
+                query=True,
+                geometry=True
+            ) or []
+            deformed_nodes.extend(geometry)
+
+        # Collect source/target geometry
+        source_nodes = []
+        for blendshape_node in blendshape_nodes:
+            sources = cmds.listConnections(
+                blendshape_node,
+                source=True,
+                destination=False,
+                type="mesh",
+                shapes=True
+            ) or []
+            source_nodes.extend(sources)
+
+        # Convert and deduplicate both lists together
+        all_nodes = deformed_nodes + source_nodes
+        return self._to_transforms(all_nodes)
