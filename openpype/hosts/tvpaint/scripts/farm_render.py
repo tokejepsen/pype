@@ -119,6 +119,7 @@ def render_all_layers(render_context):
             - output_dir: output directory for rendered frames
             - scene_file: path to TVPaint scene file
             - copy_to_output_by_layer_id: per-instance copy targets (optional)
+            - layers: list of layer metadata dicts with layer_id, position, name
     """
     print("Render mode: rendering all exposure frames for all layers in single TVPaint session")
 
@@ -131,6 +132,13 @@ def render_all_layers(render_context):
     if not extraction_data_by_layer_id:
         print("ERROR: No layers in extraction data")
         sys.exit(1)
+
+    # Build lookup from layer_id -> (position, name) for stable layer resolution
+    layer_metadata = {}
+    for layer_info in render_context.get("layers", []):
+        lid = layer_info["layer_id"]
+        layer_metadata[lid] = (layer_info["position"], layer_info["name"])
+        layer_metadata[str(lid)] = (layer_info["position"], layer_info["name"])
 
     # Build list of all (layer_id, exposure_frames) to render
     all_layers_with_exposures = []
@@ -148,9 +156,16 @@ def render_all_layers(render_context):
         ])
 
         if exposure_frames:
+            # Validate layer has metadata
+            if layer_id_str not in layer_metadata:
+                raise RuntimeError(
+                    f"Layer {layer_id} is in extraction_data_by_layer_id but missing from "
+                    f"render_context['layers']. Cannot resolve stable layer position."
+                )
             all_layers_with_exposures.append((layer_id, exposure_frames, extr_data))
             total_exposure_frames += len(exposure_frames)
-            print(f"Layer {layer_id}: {len(exposure_frames)} exposure frames")
+            position, name = layer_metadata[layer_id_str]
+            print(f"Layer {layer_id} (position {position}, name '{name}'): {len(exposure_frames)} exposure frames")
 
     if total_exposure_frames == 0:
         print("No exposure frames to render")
@@ -158,6 +173,12 @@ def render_all_layers(render_context):
         return
 
     print(f"Total exposure frames to render: {total_exposure_frames}")
+
+    # Create verification file to track actual layer selections
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        verify_path = f.name
+    verify_path_george = verify_path.replace("\\", "/")
+    expected_verifications = []
 
     # Build George script
     george_lines = []
@@ -172,12 +193,27 @@ def render_all_layers(render_context):
             "tv_LoadProject '\"'\"{}\"'\"'".format(scene_file_escaped)
         )
 
+    # Normalize to 0-based frame indexing (render context assumes tv_startframe 0)
+    george_lines.append("tv_startframe 0")
+
+    # Declare verification file path as George variable
+    george_lines.append(f'verify_path = "{verify_path_george}"')
+
     # Render each layer's exposure frames
     for layer_id, exposure_frames, extr_data in all_layers_with_exposures:
         filenames_by_frame_index = extr_data.get("filenames_by_frame_index", {})
+        position, name = layer_metadata[str(layer_id)]
 
-        # Switch to this layer
-        george_lines.append(f'tv_layerset {layer_id}')
+        # Resolve layer by position (stable across sessions) instead of session-scoped layer_id
+        george_lines.append(f'tv_LayerGetID {position}')
+        george_lines.append('lid = result')
+        george_lines.append('tv_layerset lid')
+        george_lines.append('tv_LayerInfo lid')
+        george_lines.append('PARSE result visible position opacity name type startFrame endFrame prelighttable postlighttable selected editable sencilState')
+        george_lines.append("line = position'|'name")
+        george_lines.append('tv_writetextfile "strict" "append" \'"\'verify_path\'"\' line')
+        expected_verifications.append(f"{position}|{name}")
+
         george_lines.append('tv_SaveMode "PNG"')
 
         # Render each exposure frame
@@ -240,6 +276,36 @@ def render_all_layers(render_context):
 
         print("TVPaint render completed successfully")
 
+        # Validate layer selections were correct
+        if not os.path.exists(verify_path):
+            raise RuntimeError(
+                f"Layer verification file not found: {verify_path}. "
+                "TVPaint may have failed to write layer selection data."
+            )
+
+        with open(verify_path, "r") as f:
+            actual_verifications = [line.strip() for line in f if line.strip()]
+
+        if len(actual_verifications) != len(expected_verifications):
+            raise RuntimeError(
+                f"Layer verification mismatch: expected {len(expected_verifications)} layers, "
+                f"got {len(actual_verifications)}.\n"
+                f"Expected: {expected_verifications}\n"
+                f"Actual: {actual_verifications}"
+            )
+
+        for i, (expected, actual) in enumerate(zip(expected_verifications, actual_verifications)):
+            if expected != actual:
+                raise RuntimeError(
+                    f"Layer verification failed at index {i}:\n"
+                    f"Expected: {expected}\n"
+                    f"Actual: {actual}\n"
+                    f"Full expected: {expected_verifications}\n"
+                    f"Full actual: {actual_verifications}"
+                )
+
+        print(f"Layer verification passed: all {len(expected_verifications)} layers matched")
+
         # Validate output files exist
         missing_files = []
         for output_path in expected_output_paths:
@@ -277,6 +343,9 @@ def render_all_layers(render_context):
         # Clean up George script
         if os.path.exists(george_script_path):
             os.remove(george_script_path)
+        # Clean up verification file
+        if os.path.exists(verify_path):
+            os.remove(verify_path)
 
 
 def fill_all_references(render_context):
