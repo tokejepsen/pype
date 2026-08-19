@@ -1,6 +1,9 @@
 import os
 import shutil
 import collections
+import configparser
+import glob
+import re
 from PIL import Image, ImageDraw
 
 
@@ -9,6 +12,53 @@ def backwards_id_conversion(data_by_layer_id):
     for key in tuple(data_by_layer_id.keys()):
         if not isinstance(key, str):
             data_by_layer_id[str(key)] = data_by_layer_id.pop(key)
+
+
+def iter_tvpaint_config_files():
+    """Yield active config.ini paths for installed TVPaint versions."""
+    appdata = os.environ.get("APPDATA")
+    if not appdata:
+        return
+    for base in glob.glob(os.path.join(appdata, "tvp animation *")):
+        profile = "default"
+        system_ini = os.path.join(base, "system.ini")
+        if os.path.exists(system_ini):
+            parser = configparser.ConfigParser()
+            try:
+                parser.read(system_ini)
+                profile = parser.get("system", "config", fallback="default")
+            except configparser.Error:
+                pass
+        config_path = os.path.join(base, profile, "config.ini")
+        if os.path.exists(config_path):
+            yield config_path
+
+
+def disable_george_write_popup():
+    """Disable TVPaint's modal "Write to file" permission popup.
+
+    George file writes block on that popup, which never gets answered on a
+    farm worker.
+
+    Returns:
+        dict[str, bool]: Config file path to whether the preference was found.
+    """
+    key = b"georgecanwritefiledisplaypopup"
+    results = {}
+    for config_path in iter_tvpaint_config_files():
+        with open(config_path, "rb") as stream:
+            content = stream.read()
+
+        match = re.search(key + rb"[ \t]*=[ \t]*(\d+)", content)
+        results[config_path] = match is not None
+        if match is None or match.group(1) == b"0":
+            continue
+
+        content = content[:match.start()] + key + b"=0" + content[match.end():]
+        with open(config_path, "wb") as stream:
+            stream.write(content)
+
+    return results
 
 
 def get_frame_filename_template(frame_end, filename_prefix=None, ext=None):
