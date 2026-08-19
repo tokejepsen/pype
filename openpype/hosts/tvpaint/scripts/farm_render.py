@@ -64,6 +64,17 @@ def get_tvpaint_executable(tvpaint_app_name):
     )
 
 
+def _get_tvpaint_environment():
+    """Environment for headless TVPaint launches.
+
+    OpenPypePlugin.dll connects when WEBSOCKET_URL is set, and the server then
+    triggers a blocking "Write to file" dialog.
+    """
+    env = os.environ.copy()
+    env.pop("WEBSOCKET_URL", None)
+    return env
+
+
 def _copy_to_output_dirs(copy_targets, src_dir, filenames_by_frame_index):
     """Copy rendered frames from src_dir to per-instance output directories.
 
@@ -187,11 +198,15 @@ def render_all_layers(render_context):
 
     # Load project file once
     scene_file = render_context.get("scene_file")
-    if scene_file:
-        scene_file_escaped = scene_file.replace("\\", "/")
-        george_lines.append(
-            "tv_LoadProject '\"'\"{}\"'\"'".format(scene_file_escaped)
+    if not scene_file:
+        raise RuntimeError(
+            "Render context has no 'scene_file'. TVPaint would hang on startup "
+            "screen with no project loaded, preventing tv_quit from being reached."
         )
+    scene_file_escaped = scene_file.replace("\\", "/")
+    george_lines.append(
+        "tv_LoadProject '\"'\"{}\"'\"'".format(scene_file_escaped)
+    )
 
     # Normalize to 0-based frame indexing (render context assumes tv_startframe 0)
     george_lines.append("tv_startframe 0")
@@ -248,7 +263,8 @@ def render_all_layers(render_context):
 
         # Run TVPaint with George script
         process = subprocess.Popen(
-            [tvpaint_exe, f"script={george_script_path}"]
+            [tvpaint_exe, f"script={george_script_path}"],
+            env=_get_tvpaint_environment()
         )
 
         last_progress = 0
