@@ -26,6 +26,9 @@ import subprocess
 import argparse
 import tempfile
 import time
+import configparser
+import glob
+import re
 
 
 def load_render_context(context_path):
@@ -67,12 +70,68 @@ def get_tvpaint_executable(tvpaint_app_name):
 def _get_tvpaint_environment():
     """Environment for headless TVPaint launches.
 
-    OpenPypePlugin.dll connects when WEBSOCKET_URL is set, and the server then
-    triggers a blocking "Write to file" dialog.
+    OpenPypePlugin.dll attaches to an OpenPype session when WEBSOCKET_URL is
+    set, which the farm must never do.
     """
     env = os.environ.copy()
     env.pop("WEBSOCKET_URL", None)
     return env
+
+
+def _iter_tvpaint_config_files():
+    """Yield active config.ini paths for installed TVPaint versions."""
+    appdata = os.environ.get("APPDATA")
+    if not appdata:
+        return
+    for base in glob.glob(os.path.join(appdata, "tvp animation *")):
+        profile = "default"
+        system_ini = os.path.join(base, "system.ini")
+        if os.path.exists(system_ini):
+            parser = configparser.ConfigParser()
+            try:
+                parser.read(system_ini)
+                profile = parser.get("system", "config", fallback="default")
+            except configparser.Error:
+                pass
+        config_path = os.path.join(base, profile, "config.ini")
+        if os.path.exists(config_path):
+            yield config_path
+
+
+def _disable_george_write_popup():
+    """Disable TVPaint's modal "Write to file" permission popup.
+
+    George file writes block on that popup, which never gets answered on a farm
+    worker.
+    """
+    key = b"georgecanwritefiledisplaypopup"
+    found_config = False
+    for config_path in _iter_tvpaint_config_files():
+        found_config = True
+        with open(config_path, "rb") as stream:
+            content = stream.read()
+
+        match = re.search(key + rb"[ \t]*=[ \t]*(\d+)", content)
+        if match is None:
+            print(
+                f"WARNING: {key.decode()} not found in {config_path}, "
+                "TVPaint may block on the write permission popup"
+            )
+            continue
+
+        if match.group(1) == b"0":
+            continue
+
+        content = content[:match.start()] + key + b"=0" + content[match.end():]
+        with open(config_path, "wb") as stream:
+            stream.write(content)
+        print(f"Disabled George write popup in {config_path}")
+
+    if not found_config:
+        print(
+            "WARNING: No TVPaint config.ini found, TVPaint may block on the "
+            "George write permission popup"
+        )
 
 
 def _copy_to_output_dirs(copy_targets, src_dir, filenames_by_frame_index):
@@ -260,6 +319,8 @@ def render_all_layers(render_context):
         print(f"Running TVPaint: {tvpaint_exe}")
         print(f"George script: {george_script_path}")
         print("Progress: 0%")
+
+        _disable_george_write_popup()
 
         # Run TVPaint with George script
         process = subprocess.Popen(
