@@ -709,7 +709,8 @@
             "sync_workfile_version": false
         },
         "CollectFbxAnimation": {
-            "enabled": true
+            "enabled": true,
+            "export_from_skeleton_root": false
         },
         "CollectFbxCamera": {
             "enabled": false

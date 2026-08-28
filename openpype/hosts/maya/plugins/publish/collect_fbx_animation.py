@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from maya import cmds  # noqa
 import pyblish.api
+from openpype.lib import BoolDef
 from openpype.pipeline import OptionalPyblishPluginMixin
 from openpype.hosts.maya.api.lib import get_namespace
 
@@ -14,6 +15,23 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
     hosts = ["maya"]
     families = ["animation"]
     optional = True
+    export_from_skeleton_root = False
+
+    @classmethod
+    def get_attribute_defs(cls):
+        defs = super(CollectFbxAnimation, cls).get_attribute_defs()
+        defs.append(
+            BoolDef(
+                "export_from_skeleton_root",
+                label="Export from skeleton root joint",
+                tooltip=(
+                    "Export the FBX starting from the top-most joint of "
+                    "the skeleton instead of the rig root group."
+                ),
+                default=cls.export_from_skeleton_root
+            )
+        )
+        return defs
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -30,14 +48,43 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
             "includeSkeletonMesh attribute: {}".format(include_mesh)
         )
 
+        attr_values = self.get_attr_values_from_data(instance.data)
+        export_from_skeleton_root = attr_values.get(
+            "export_from_skeleton_root", self.export_from_skeleton_root
+        )
+        self.log.debug(
+            "export_from_skeleton_root attribute: {}".format(
+                export_from_skeleton_root
+            )
+        )
+
         instance.data["families"].append("animation.fbx")
         instance.data["animated_skeletons"] = {}
         instance.data["skeleton_mesh_included"] = False
+        instance.data["skeleton_export_roots"] = {}
 
         for skeleton_set in skeleton_sets:
             skeleton_content = cmds.sets(skeleton_set, query=True) or []
             set_name = skeleton_set.split(":")[-1]
             mesh_content = []
+
+            skeleton_roots = skeleton_content
+            if export_from_skeleton_root:
+                resolved_roots = self.get_skeleton_roots(skeleton_content)
+                if resolved_roots:
+                    skeleton_roots = resolved_roots
+                    instance.data["skeleton_export_roots"][set_name] = (
+                        resolved_roots
+                    )
+                    self.log.debug(
+                        "Resolved skeleton roots for {}: {}".format(
+                            skeleton_set, skeleton_roots
+                        ))
+                else:
+                    self.log.warning(
+                        "No joints found under {}; using raw set members "
+                        "instead.".format(skeleton_set)
+                    )
 
             if include_mesh:
                 # Try sibling skeletonMesh_SET first
@@ -81,17 +128,19 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
                             skeleton_set
                         ))
 
-                if mesh_content:
-                    skeleton_content = skeleton_content + mesh_content
-                    instance.data["skeleton_mesh_included"] = True
+            # Build final export list: resolved roots + meshes
+            out_members = skeleton_roots[:]
+            if mesh_content:
+                out_members = out_members + mesh_content
+                instance.data["skeleton_mesh_included"] = True
 
             self.log.debug(
                 "Collected animated skeleton data for {}: {}".format(
-                    set_name, skeleton_content
+                    set_name, out_members
                 ))
-            if skeleton_content:
+            if out_members:
                 instance.data["animated_skeletons"][set_name] = (
-                    skeleton_content
+                    out_members
                 )
 
     def get_skinned_meshes(self, nodes):
@@ -157,6 +206,45 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
                 result.append(mesh)
 
         return result
+
+    def get_skeleton_roots(self, nodes):
+        """Resolve the top-most joints from the given nodes.
+
+        Gathers all joints directly in the node list and all descendant
+        joints, then filters to keep only the top-most joints (those that
+        are not children of another candidate joint).
+
+        Args:
+            nodes (list): Nodes to search for joints.
+
+        Returns:
+            list: Short unique names of top-most joint nodes.
+        """
+        if not nodes:
+            return []
+
+        # Gather candidate joints: direct joints + all descendant joints
+        joints = cmds.ls(nodes, type="joint", long=True) or []
+        joints += cmds.listRelatives(
+            nodes, allDescendents=True, type="joint", fullPath=True
+        ) or []
+        joints = sorted(set(joints))
+        if not joints:
+            return []
+
+        # Keep only top-most joints: discard any joint that is a
+        # descendant of another candidate joint
+        top_joints = []
+        for joint in joints:
+            is_child = False
+            for other in joints:
+                if other != joint and joint.startswith(other + "|"):
+                    is_child = True
+                    break
+            if not is_child:
+                top_joints.append(joint)
+
+        return cmds.ls(top_joints)
 
     def _to_transforms(self, nodes):
         """Convert shapes to transforms and deduplicate.

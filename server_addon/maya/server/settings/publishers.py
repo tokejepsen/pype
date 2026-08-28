@@ -131,6 +131,10 @@ class CollectMayaRenderModel(BaseSettingsModel):
 
 class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = Field(title="Collect Fbx Animation")
+    export_from_skeleton_root: bool = Field(
+        default=False,
+        title="Export from skeleton root joint"
+    )
 
 
 class CollectFbxCameraModel(BaseSettingsModel):
@@ -785,7 +789,8 @@ DEFAULT_PUBLISH_SETTINGS = {
         "sync_workfile_version": False
     },
     "CollectFbxAnimation": {
-        "enabled": True
+        "enabled": True,
+        "export_from_skeleton_root": False
     },
     "CollectFbxCamera": {
         "enabled": False

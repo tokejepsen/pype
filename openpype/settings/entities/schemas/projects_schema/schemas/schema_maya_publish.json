@@ -32,6 +32,11 @@
                     "type": "boolean",
                     "key": "enabled",
                     "label": "Enabled"
+                },
+                {
+                    "type": "boolean",
+                    "key": "export_from_skeleton_root",
+                    "label": "Export from skeleton root joint"
                 }
             ]
         },
