@@ -41,6 +41,16 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
     actions = [RepairAction]
     exclude_families = []
 
+    @staticmethod
+    def _resolve_instance_value(instance, key):
+        """Publisher attributes win over collected instance data."""
+        creator_attributes = instance.data.get("creator_attributes", {})
+        for source in (creator_attributes, instance.data):
+            value = source.get(key)
+            if value is not None:
+                return value
+        return None
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return
@@ -60,12 +70,24 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
         frame_start = int(context.data.get("frameStart"))
         frame_end = int(context.data.get("frameEnd"))
 
-        inst_frame_start_handle = int(instance.data.get("frameStartHandle"))
-        inst_frame_end_handle = int(instance.data.get("frameEndHandle"))
-        inst_frame_start = int(instance.data.get("frameStart"))
-        inst_frame_end = int(instance.data.get("frameEnd"))
-        inst_handle_start = int(instance.data.get("handleStart"))
-        inst_handle_end = int(instance.data.get("handleEnd"))
+        inst_frame_start = int(self._resolve_instance_value(
+            instance, "frameStart"))
+        inst_frame_end = int(self._resolve_instance_value(
+            instance, "frameEnd"))
+        inst_handle_start = int(self._resolve_instance_value(
+            instance, "handleStart"))
+        inst_handle_end = int(self._resolve_instance_value(
+            instance, "handleEnd"))
+
+        # Derive handle-inclusive frames when creator attrs override base values
+        creator_attributes = instance.data.get("creator_attributes", {})
+        if "frameStart" in creator_attributes:
+            inst_frame_start_handle = inst_frame_start - inst_handle_start
+            inst_frame_end_handle = inst_frame_end + inst_handle_end
+        else:
+            inst_frame_start_handle = int(
+                instance.data.get("frameStartHandle"))
+            inst_frame_end_handle = int(instance.data.get("frameEndHandle"))
 
         self.log.info("Frame start: {}, instance: {}".format(frame_start, inst_frame_start))
         self.log.info("Frame end: {}, instance: {}".format(frame_end, inst_frame_end))
