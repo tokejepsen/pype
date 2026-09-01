@@ -43,6 +43,27 @@ subagent is active, and blocks direct orchestrator reads of files > 50 KB
 (delegate those to `explorer`). It fails open on internal errors so it can never
 brick legitimate editing — the contract above still applies regardless.
 
+## Settings Before Code
+
+**Check settings first.** Many behaviours (loader/creator/publish plugin
+defaults, enabled state, name templates, option defaults, host presets) are
+already exposed as OpenPype/AYON settings. If the request can be satisfied by
+changing a project setting, say so and stop — do not edit code.
+
+Self-check before any code change:
+
+1. Does a setting already control this? Search `openpype/settings/defaults/`,
+   `openpype/settings/entities/schemas/`, and `server_addon/<addon>/server/settings/`.
+2. If yes → tell the user which setting and where (Project Settings path), and
+   do not touch the plugin code.
+3. Only if no setting exists → change code, and prefer adding a setting over
+   hardcoding a new default.
+
+Never change a shipped default in `openpype/settings/defaults/` or
+`server_addon/` to fix one user's project — project-level overrides are the
+correct place. Changing a shipped default is a no-op for any project that
+already overrides it.
+
 ## Key Reference Directories
 
 - **`openpype/pipeline/`** — base classes and pipeline interfaces (`Creator`, `Collector`, `Validator`, `Integrator`, `Loader`). Reference when implementing publish plugins.
