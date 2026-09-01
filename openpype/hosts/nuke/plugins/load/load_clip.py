@@ -365,9 +365,11 @@ class LoadClip(plugin.NukeLoader):
         read_node['first'].setValue(int(first))
         read_node['origlast'].setValue(int(last))
         read_node['last'].setValue(int(last))
+        read_node['before'].setValue("black")
+        read_node['after'].setValue("black")
 
         # set start frame depending on workfile or version
-        self._loader_shift(read_node, start_at_workfile)
+        self._loader_shift(read_node, first, start_at_workfile)
 
     def _make_retimes(self, parent_node, version_data):
         ''' Create all retime and timewarping nodes with copied animation '''
@@ -424,17 +426,18 @@ class LoadClip(plugin.NukeLoader):
                 for i, n in enumerate(dependent_nodes):
                     last_node.setInput(i, n)
 
-    def _loader_shift(self, read_node, workfile_start=False):
-        """ Set start frame of read node to a workfile start
+    def _loader_shift(self, read_node, first, workfile_start=False):
+        """ Set start frame of read node
 
         Args:
             read_node (nuke.Node): The nuke's read node
+            first (int): first frame of the loaded clip
             workfile_start (bool): set workfile start frame if true
 
         """
-        if workfile_start:
-            read_node['frame_mode'].setValue("start at")
-            read_node['frame'].setValue(str(self.script_start))
+        start_at = self.script_start if workfile_start else int(first)
+        read_node['frame_mode'].setValue("start at")
+        read_node['frame'].setValue(str(start_at))
 
     def _get_node_name(self, representation):
 
