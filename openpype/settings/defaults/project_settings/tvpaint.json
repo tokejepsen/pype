@@ -82,6 +82,11 @@
             "optional": true,
             "active": true
         },
+        "ValidateEmptyFrames": {
+            "enabled": true,
+            "optional": true,
+            "active": true
+        },
         "ExtractConvertToEXR": {
             "enabled": false,
             "replace_pngs": true,

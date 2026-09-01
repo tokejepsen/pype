@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Instance frame range contains empty frames</title>
+<description>## Empty frames detected
+
+The render instance **{instance_label}** has **{empty_frame_count}** empty frames in its frame range ({frame_start}–{frame_end}).
+
+- Empty frames: **{empty_frames}**
+
+These frames have no image on any visible layer and would render as blank images.
+
+### How to fix?
+
+Use the **Repair** button to trim the instance frame range to the frames that have content. If the empty frames are in the middle of the range (not just padding at the ends), you must draw or extend content in TVPaint first.
+
+Reset publishing after making changes.
+</description>
+</error>
+</root>

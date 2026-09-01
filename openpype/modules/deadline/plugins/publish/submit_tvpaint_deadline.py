@@ -282,6 +282,60 @@ class TVPaintSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline):
         current_file = context.data.get("currentFile", "")
         return current_file.replace("\\", "/")
 
+    def _apply_render_range(self, instance, mark_in, mark_out):
+        """Align instance frame range with the frames actually rendered.
+
+        The per instance render window is trimmed to the layers' content,
+        so the published range has to follow it. Otherwise the publish job
+        advertises the full scene range over a shorter file sequence and
+        the integrator renumbers the frames from the wrong start.
+
+        The offset is derived from the context rather than the values
+        collected by 'CollectOutputFrameRange', which are not guaranteed
+        to be present on farm instances.
+        """
+        context = instance.context
+        asset_doc = instance.data.get("assetEntity") or {}
+        asset_data = asset_doc.get("data") or {}
+
+        asset_frame_start = asset_data.get("frameStart")
+        if asset_frame_start is None:
+            asset_frame_start = context.data.get("frameStart")
+
+        scene_mark_in = context.data.get("sceneMarkIn")
+        if asset_frame_start is None or scene_mark_in is None:
+            self.log.warning(
+                "Could not resolve frame range for {}: missing asset frame"
+                " start or scene mark in.".format(
+                    instance.data.get("subset")
+                )
+            )
+            return
+
+        handle_start = context.data.get("handleStart") or 0
+
+        # sceneMarkIn maps to the first handle frame, not to asset frameStart
+        offset = asset_frame_start - handle_start - scene_mark_in
+        frame_start = mark_in + offset
+        frame_end = mark_out + offset
+
+        # The rendered window is exactly the content, so it carries no handles
+        instance.data["frameStart"] = frame_start
+        instance.data["frameEnd"] = frame_end
+        instance.data["handleStart"] = 0
+        instance.data["handleEnd"] = 0
+        instance.data["frameStartHandle"] = frame_start
+        instance.data["frameEndHandle"] = frame_end
+        instance.data["instanceMarkIn"] = mark_in
+        instance.data["instanceMarkOut"] = mark_out
+
+        self.log.info(
+            "Render range for {}: scene {}-{} -> frames {}-{}".format(
+                instance.data.get("subset"),
+                mark_in, mark_out, frame_start, frame_end
+            )
+        )
+
     def _get_exr_conversion_settings(self, instance):
         """Get EXR conversion settings from project settings.
 
@@ -515,8 +569,17 @@ class TVPaintSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline):
                         context_obj.data["sceneMarkOut"] - scene_mark_in_global
                     )
                 )
-                inst_mi = int(scene_mark_in_global + (inst_fs - project_frame_start))
-                inst_mo = int(scene_mark_in_global + (inst_fe - project_frame_start))
+                inst_mi = inst.data.get("instanceMarkIn")
+                inst_mo = inst.data.get("instanceMarkOut")
+                if inst_mi is None or inst_mo is None:
+                    inst_mi = int(
+                        scene_mark_in_global
+                        + (inst_fs - project_frame_start)
+                    )
+                    inst_mo = int(
+                        scene_mark_in_global
+                        + (inst_fe - project_frame_start)
+                    )
                 ranges.append((inst_mi, inst_mo))
                 per_instance_ranges_local[inst.data.get("subset", "")] = (inst_mi, inst_mo)
 
@@ -888,24 +951,27 @@ class TVPaintSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline):
         # instance.data["frameStart"]/"frameEnd"] are in project frame space;
         # convert back to scene space using the global scene mark origin.
         if mark_in is None or mark_out is None:
-            asset_doc = instance.data.get("assetEntity") or {}
-            project_frame_start = (
-                asset_doc.get("data", {}).get("frameStart")
-                or context.data["sceneMarkIn"]
-            )
-            scene_mark_in_global = context.data["sceneMarkIn"]
-            instance_frame_start = instance.data.get("frameStart", project_frame_start)
-            instance_frame_end = instance.data.get(
-                "frameEnd",
-                project_frame_start + (
-                    context.data["sceneMarkOut"] - scene_mark_in_global
+            mark_in = instance.data.get("instanceMarkIn")
+            mark_out = instance.data.get("instanceMarkOut")
+            if mark_in is None or mark_out is None:
+                asset_doc = instance.data.get("assetEntity") or {}
+                project_frame_start = (
+                    asset_doc.get("data", {}).get("frameStart")
+                    or context.data["sceneMarkIn"]
                 )
-            )
-            if mark_in is None:
+                scene_mark_in_global = context.data["sceneMarkIn"]
+                instance_frame_start = instance.data.get(
+                    "frameStart", project_frame_start
+                )
+                instance_frame_end = instance.data.get(
+                    "frameEnd",
+                    project_frame_start + (
+                        context.data["sceneMarkOut"] - scene_mark_in_global
+                    )
+                )
                 mark_in = scene_mark_in_global + (
                     instance_frame_start - project_frame_start
                 )
-            if mark_out is None:
                 mark_out = scene_mark_in_global + (
                     instance_frame_end - project_frame_start
                 )
@@ -998,6 +1064,9 @@ class TVPaintSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline):
                 output_dir = render_info["output_dir"] if render_info else self._get_output_dir_for(instance)
                 mark_in = render_info["mark_in"] if render_info else 0
                 mark_out = render_info["mark_out"] if render_info else 0
+
+                if render_info:
+                    self._apply_render_range(instance, mark_in, mark_out)
 
                 output_template = get_frame_filename_template(mark_out)
                 instance.data["expectedFiles"] = [
@@ -1116,7 +1185,8 @@ class TVPaintSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline):
         composite_job_id = self.submit(payload)
         self.log.info(f"Submitted composite job {composite_job_id} for {inst_subset}")
 
-        # Update instance data
+        self._apply_render_range(instance, mark_in, mark_out)
+
         output_template = get_frame_filename_template(mark_out)
         instance.data["expectedFiles"] = [
             os.path.join(output_dir, output_template.format(frame=frame_idx))

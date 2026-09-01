@@ -52,12 +52,21 @@ class CollectExpectedFiles(pyblish.api.InstancePlugin):
             return
 
         # Compute mark_in/mark_out in TVPaint's render coordinate system
-        # This matches the formula used in submit_tvpaint_deadline.py
-        asset_doc = instance.data.get("assetEntity", {})
-        project_frame_start = asset_doc.get("data", {}).get("frameStart", scene_mark_in)
-
-        mark_in = int(scene_mark_in + (frame_start - project_frame_start))
-        mark_out = int(scene_mark_in + (frame_end - project_frame_start))
+        # Prefer collected values; fall back to the legacy formula for
+        # backwards compatibility when the collector hasn't run yet.
+        mark_in = instance.data.get("instanceMarkIn")
+        mark_out = instance.data.get("instanceMarkOut")
+        if mark_in is None or mark_out is None:
+            asset_doc = instance.data.get("assetEntity", {})
+            project_frame_start = (
+                asset_doc.get("data", {}).get("frameStart", scene_mark_in)
+            )
+            mark_in = int(
+                scene_mark_in + (frame_start - project_frame_start)
+            )
+            mark_out = int(
+                scene_mark_in + (frame_end - project_frame_start)
+            )
 
         # Resolve preliminary output directory
         # Prefer instance.data["outputDir"] if set, otherwise use staging dir as placeholder

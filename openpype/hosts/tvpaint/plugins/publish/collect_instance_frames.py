@@ -1,12 +1,16 @@
 import pyblish.api
 
+from openpype.hosts.tvpaint.lib import calculate_instance_frame_data
+
 
 class CollectOutputFrameRange(pyblish.api.InstancePlugin):
-    """Collect frame start/end from context.
+    """Resolve instance frame range in asset and scene space.
 
-    When instances are collected context does not contain `frameStart` and
-    `frameEnd` keys yet. They are collected in global plugin
-    `CollectContextEntities`.
+    This plugin is the single source of truth for per-instance frame
+    ranges. It calls the shared helper to compute both asset-space
+    values (frameStart, frameEnd, handleStart, handleEnd) and
+    TVPaint scene-space values (instanceMarkIn, instanceMarkOut)
+    and stores them on instance.data for downstream plugins.
     """
 
     label = "Collect output frame range"
@@ -21,25 +25,51 @@ class CollectOutputFrameRange(pyblish.api.InstancePlugin):
 
         context = instance.context
 
-        # Check if instance has custom frame ranges set via creator attributes
-        creator_attributes = instance.data.get("creator_attributes", {})
-        if "frame_start" in creator_attributes and "frame_end" in creator_attributes:
-            # Use instance-specific frame range
-            frame_start = creator_attributes["frame_start"]
-            frame_end = creator_attributes["frame_end"]
-        else:
-            # Fall back to scene mark in/out (backwards compatibility)
-            frame_start = asset_doc["data"]["frameStart"]
-            frame_end = frame_start + (
-                context.data["sceneMarkOut"] - context.data["sceneMarkIn"]
-            )
+        creator_attributes = instance.data.get("creator_attributes") or {}
+        frame_start = creator_attributes.get("frame_start")
+        frame_end = creator_attributes.get("frame_end")
 
-        fps = asset_doc["data"]["fps"]
-        instance.data["fps"] = fps
-        instance.data["frameStart"] = frame_start
-        instance.data["frameEnd"] = frame_end
+        asset_frame_start = asset_doc["data"]["frameStart"]
+
+        handle_start = context.data.get("handleStart")
+        if handle_start is None:
+            handle_start = asset_doc["data"].get("handleStart", 0)
+
+        handle_end = context.data.get("handleEnd")
+        if handle_end is None:
+            handle_end = asset_doc["data"].get("handleEnd", 0)
+
+        scene_mark_in = context.data["sceneMarkIn"]
+        scene_mark_out = context.data["sceneMarkOut"]
+
+        frame_data = calculate_instance_frame_data(
+            frame_start,
+            frame_end,
+            asset_frame_start,
+            scene_mark_in,
+            scene_mark_out,
+            handle_start,
+            handle_end
+        )
+
+        instance.data["fps"] = asset_doc["data"]["fps"]
+        instance.data["frameStart"] = frame_data["frame_start"]
+        instance.data["frameEnd"] = frame_data["frame_end"]
+        instance.data["handleStart"] = frame_data["handle_start"]
+        instance.data["handleEnd"] = frame_data["handle_end"]
+        instance.data["frameStartHandle"] = frame_data["frame_start_handle"]
+        instance.data["frameEndHandle"] = frame_data["frame_end_handle"]
+        instance.data["instanceMarkIn"] = frame_data["mark_in"]
+        instance.data["instanceMarkOut"] = frame_data["mark_out"]
+
         self.log.info(
-            "Set frames {}-{} on instance {} ".format(
-                frame_start, frame_end, instance.data["subset"]
+            "Resolved {}: asset {}-{}, handles {}-{}, scene {}-{}".format(
+                instance.data["subset"],
+                frame_data["frame_start"],
+                frame_data["frame_end"],
+                frame_data["frame_start_handle"],
+                frame_data["frame_end_handle"],
+                frame_data["mark_in"],
+                frame_data["mark_out"]
             )
         )

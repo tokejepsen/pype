@@ -981,6 +981,7 @@ def _convert_tvpaint_project_settings(ayon_settings, output):
         "ValidateMarks",
         "ValidateStartFrame",
         "ValidateAssetName",
+        "ValidateEmptyFrames",
     ):
         ayon_value = ayon_publish_settings[plugin_name]
         for src_key, dst_key in (

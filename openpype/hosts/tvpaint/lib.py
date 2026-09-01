@@ -86,6 +86,79 @@ def get_layer_pos_filename_template(range_end, filename_prefix=None, ext=None):
     return get_frame_filename_template(range_end, new_filename_prefix, ext)
 
 
+def calculate_instance_frame_data(
+    frame_start,
+    frame_end,
+    asset_frame_start,
+    scene_mark_in,
+    scene_mark_out,
+    handle_start,
+    handle_end
+):
+    """Resolve an instance frame range in asset and TVPaint scene space.
+
+    A creator range matching the creator default spans the whole marked
+    region including handles. Any other range is an exact content range
+    which has no handles in it.
+
+    Args:
+        frame_start (int): Instance frame start in asset space, may be
+            None.
+        frame_end (int): Instance frame end in asset space, may be None.
+        asset_frame_start (int): Asset 'frameStart'.
+        scene_mark_in (int): Scene mark in.
+        scene_mark_out (int): Scene mark out.
+        handle_start (int): Project handle start.
+        handle_end (int): Project handle end.
+
+    Returns:
+        dict: Keys 'frame_start', 'frame_end', 'handle_start',
+            'handle_end', 'frame_start_handle', 'frame_end_handle',
+            'mark_in' and 'mark_out'.
+    """
+    mark_duration = scene_mark_out - scene_mark_in
+    default_frame_end = asset_frame_start + mark_duration
+
+    is_full_span = (
+        frame_start is None
+        or frame_end is None
+        or (
+            int(frame_start) == int(asset_frame_start)
+            and int(frame_end) == int(default_frame_end)
+        )
+    )
+
+    if is_full_span:
+        frame_start_handle = asset_frame_start - handle_start
+        frame_end_handle = frame_start_handle + mark_duration
+        return {
+            "frame_start": asset_frame_start,
+            "frame_end": frame_end_handle - handle_end,
+            "handle_start": handle_start,
+            "handle_end": handle_end,
+            "frame_start_handle": frame_start_handle,
+            "frame_end_handle": frame_end_handle,
+            "mark_in": scene_mark_in,
+            "mark_out": scene_mark_out,
+        }
+
+    frame_start = int(frame_start)
+    frame_end = int(frame_end)
+    mark_in = (
+        scene_mark_in + handle_start + (frame_start - asset_frame_start)
+    )
+    return {
+        "frame_start": frame_start,
+        "frame_end": frame_end,
+        "handle_start": 0,
+        "handle_end": 0,
+        "frame_start_handle": frame_start,
+        "frame_end_handle": frame_end,
+        "mark_in": mark_in,
+        "mark_out": mark_in + (frame_end - frame_start),
+    }
+
+
 def _calculate_pre_behavior_copy(
     range_start, exposure_frames, pre_beh,
     layer_frame_start, layer_frame_end,

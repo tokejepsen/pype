@@ -83,6 +83,9 @@ class PublishPluginsModel(BaseSettingsModel):
     ValidateAssetName: ValidatePluginModel = Field(
         default_factory=ValidatePluginModel,
         title="Validate Folder Name")
+    ValidateEmptyFrames: ValidatePluginModel = Field(
+        default_factory=ValidatePluginModel,
+        title="Validate Empty Frames")
     ExtractConvertToEXR: ExtractConvertToEXRModel = Field(
         default_factory=ExtractConvertToEXRModel,
         title="Extract Convert To EXR")
@@ -120,6 +123,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateAssetName": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ValidateEmptyFrames": {
         "enabled": True,
         "optional": True,
         "active": True
