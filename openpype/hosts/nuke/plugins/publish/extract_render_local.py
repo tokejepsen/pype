@@ -40,8 +40,20 @@ class NukeRenderLocal(publish.Extractor,
 
         node_subset_name = instance.data.get("name", None)
 
-        first_frame = instance.data.get("frameStartHandle", None)
-        last_frame = instance.data.get("frameEndHandle", None)
+        # The write node's "limit to range" knob is the artist's explicit
+        # choice and takes priority over the collected fallback range.
+        if instance.data.get("writeNodeFrameRangeLimitEnabled"):
+            first_frame = int(instance.data["writeNodeFrameRangeLimitFirst"])
+            last_frame = int(instance.data["writeNodeFrameRangeLimitLast"])
+            handle_start = instance.data["handleStart"]
+            handle_end = instance.data["handleEnd"]
+            instance.data["frameStart"] = first_frame + handle_start
+            instance.data["frameEnd"] = last_frame - handle_end
+            instance.data["frameStartHandle"] = first_frame
+            instance.data["frameEndHandle"] = last_frame
+        else:
+            first_frame = instance.data.get("frameStartHandle", None)
+            last_frame = instance.data.get("frameEndHandle", None)
 
         filenames = []
         node_file = node["file"]
