@@ -430,18 +430,18 @@ class ExtractFBXAnimation(publish.Extractor):
         if not cmds.objExists(attribute):
             return
 
-        if cmds.listConnections(
-            attribute, source=True, destination=False
-        ):
-            return
-
         # The rig may have locked the attribute, which the duplicate
         # inherits, so the lock is lifted for the change.
         locked = cmds.getAttr(attribute, lock=True)
         if locked:
             cmds.setAttr(attribute, lock=False)
 
-        cmds.setAttr(attribute, value)
-
-        if locked:
-            cmds.setAttr(attribute, lock=True)
+        try:
+            # Covers connections on parent compounds too, such as a
+            # display layer driving "drawOverride".
+            if not cmds.getAttr(attribute, settable=True):
+                return
+            cmds.setAttr(attribute, value)
+        finally:
+            if locked:
+                cmds.setAttr(attribute, lock=True)

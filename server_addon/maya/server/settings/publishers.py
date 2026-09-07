@@ -133,7 +133,7 @@ class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = Field(title="Collect Fbx Animation")
     export_from_skeleton_root: bool = Field(
         default=False,
-        title="Export from skeleton root joint"
+        title="Export from skeleton root"
     )
 
 

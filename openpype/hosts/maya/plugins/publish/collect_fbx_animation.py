@@ -23,10 +23,11 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
         defs.append(
             BoolDef(
                 "export_from_skeleton_root",
-                label="Export from skeleton root joint",
+                label="Export from skeleton root",
                 tooltip=(
-                    "Export the FBX starting from the top-most joint of "
-                    "the skeleton instead of the rig root group."
+                    "Export the FBX starting from the top-most skeleton "
+                    "root node (joint, locator or group) instead of the "
+                    "rig root group."
                 ),
                 default=cls.export_from_skeleton_root
             )
@@ -82,8 +83,8 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
                         ))
                 else:
                     self.log.warning(
-                        "No joints found under {}; using raw set members "
-                        "instead.".format(skeleton_set)
+                        "No skeleton root found under {}; using raw set "
+                        "members instead.".format(skeleton_set)
                     )
 
             if include_mesh:
@@ -207,18 +208,63 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
 
         return result
 
+    def is_skeleton_content(self, node):
+        """Check whether a node and its hierarchy are skeleton only.
+
+        Args:
+            node (str): Node to check.
+
+        Returns:
+            bool: True when the node is a transform and its hierarchy
+                contains only transforms (joints included) and locators.
+        """
+        if not cmds.objectType(node, isAType="transform"):
+            return False
+
+        hierarchy = [node]
+        hierarchy += cmds.listRelatives(
+            node, allDescendents=True, fullPath=True
+        ) or []
+        for child in hierarchy:
+            if cmds.objectType(child, isAType="transform"):
+                continue
+            if cmds.objectType(child) == "locator":
+                continue
+            return False
+
+        return True
+
+    def is_locator(self, node):
+        """Check whether a node is a transform holding a locator shape.
+
+        Args:
+            node (str): Node to check.
+
+        Returns:
+            bool: True when the node has a locator shape.
+        """
+        shapes = cmds.listRelatives(node, shapes=True, fullPath=True) or []
+        return any(
+            cmds.objectType(shape) == "locator" for shape in shapes
+        )
+
     def get_skeleton_roots(self, nodes):
-        """Resolve the top-most joints from the given nodes.
+        """Resolve the top-most skeleton roots from the given nodes.
 
         Gathers all joints directly in the node list and all descendant
         joints, then filters to keep only the top-most joints (those that
-        are not children of another candidate joint).
+        are not children of another candidate joint). Each top-most joint
+        is then promoted upwards as long as its parent only holds
+        skeleton content (transforms and locators), so a motion root
+        locator or a joints-only group becomes the root. Promotion only
+        passes through locators and nodes that are members of `nodes`,
+        so rig groups above the skeleton stay out of the export.
 
         Args:
             nodes (list): Nodes to search for joints.
 
         Returns:
-            list: Short unique names of top-most joint nodes.
+            list: Short unique names of top-most skeleton root nodes.
         """
         if not nodes:
             return []
@@ -244,7 +290,41 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
             if not is_child:
                 top_joints.append(joint)
 
-        return cmds.ls(top_joints)
+        # Promote each top-most joint to the highest ancestor that still
+        # only contains skeleton content
+        members = set(cmds.ls(nodes, long=True) or [])
+        promoted_roots = []
+        for root in top_joints:
+            while True:
+                parents = cmds.listRelatives(
+                    root, parent=True, fullPath=True
+                ) or []
+                if not parents:
+                    break
+                parent = parents[0]
+                # Only set members and locators are promoted to, so the
+                # rig groups above the skeleton stay out of the export.
+                if parent not in members and not self.is_locator(parent):
+                    break
+                if not self.is_skeleton_content(parent):
+                    break
+                root = parent
+            promoted_roots.append(root)
+
+        # Promotion can produce duplicates or nested roots, so filter to
+        # the top-most nodes again
+        promoted_roots = sorted(set(promoted_roots))
+        top_roots = []
+        for root in promoted_roots:
+            is_child = False
+            for other in promoted_roots:
+                if other != root and root.startswith(other + "|"):
+                    is_child = True
+                    break
+            if not is_child:
+                top_roots.append(root)
+
+        return cmds.ls(top_roots)
 
     def _to_transforms(self, nodes):
         """Convert shapes to transforms and deduplicate.
