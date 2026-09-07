@@ -128,6 +128,12 @@ class OverviewWidget(QtWidgets.QFrame):
             self._on_active_changed
         )
         # Instance context has changed
+        subset_list_view.instance_context_changed.connect(
+            self._on_instance_context_change
+        )
+        subset_view_cards.instance_context_changed.connect(
+            self._on_instance_context_change
+        )
         subset_attributes_widget.instance_context_changed.connect(
             self._on_instance_context_change
         )

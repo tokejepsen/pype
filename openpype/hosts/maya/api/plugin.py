@@ -252,12 +252,51 @@ class MayaCreatorBase(object):
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
 
+    def rename_instance_node(self, created_inst):
+        """Rename the instance objectSet to match a renamed subset.
+
+        Returns:
+            str: Name of the instance node, renamed when applicable.
+        """
+        node = created_inst.data.get("instance_node")
+        if not node or not cmds.objExists(node):
+            return node
+
+        subset_name = created_inst.data.get("subset")
+        if not subset_name or subset_name == node:
+            return node
+
+        # Only rename nodes that were named after the subset they store.
+        if node != created_inst.origin_data.get("subset"):
+            return node
+
+        if (
+            cmds.referenceQuery(node, isNodeReferenced=True)
+            or cmds.lockNode(node, query=True, lock=True)[0]
+        ):
+            self.log.warning(
+                "Instance node '{}' is referenced or locked and could not be"
+                " renamed to '{}'.".format(node, subset_name)
+            )
+            return node
+
+        try:
+            new_node = cmds.rename(node, subset_name)
+        except RuntimeError as exc:
+            self.log.warning(
+                "Failed to rename instance node '{}' to '{}': {}".format(
+                    node, subset_name, exc
+                )
+            )
+            return node
+
+        created_inst.data["instance_node"] = new_node
+        return new_node
+
     def _default_update_instances(self, update_list):
         for created_inst, _changes in update_list:
-            data = created_inst.data_to_store()
-            node = data.get("instance_node")
-
-            self.imprint_instance_node(node, data)
+            node = self.rename_instance_node(created_inst)
+            self.imprint_instance_node(node, created_inst.data_to_store())
 
     def _default_remove_instances(self, instances):
         """Remove specified instance from the scene.

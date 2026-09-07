@@ -25,6 +25,7 @@ import collections
 
 from qtpy import QtWidgets, QtCore
 
+from openpype import AYON_SERVER_ENABLED
 from openpype.widgets.nice_checkbox import NiceCheckbox
 
 from openpype.tools.utils import BaseClickableFrame
@@ -33,7 +34,8 @@ from .widgets import (
     AbstractInstanceView,
     ContextWarningLabel,
     IconValuePixmapLabel,
-    PublishPixmapLabel
+    PublishPixmapLabel,
+    show_subset_rename_dialog
 )
 from ..constants import (
     CONTEXT_ID,
@@ -203,6 +205,7 @@ class InstanceGroupWidget(BaseGroupWidget):
     """Widget wrapping instances under group."""
 
     active_changed = QtCore.Signal(str, str, bool)
+    rename_requested = QtCore.Signal(str)
 
     def __init__(self, group_icons, *args, **kwargs):
         super(InstanceGroupWidget, self).__init__(*args, **kwargs)
@@ -254,6 +257,7 @@ class InstanceGroupWidget(BaseGroupWidget):
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)
+                    widget.rename_requested.connect(self.rename_requested)
                     self._widgets_by_id[instance.id] = widget
                     self._content_layout.insertWidget(widget_idx, widget)
                 widget_idx += 1
@@ -381,6 +385,7 @@ class InstanceCardWidget(CardWidget):
     """Card widget representing instance."""
 
     active_changed = QtCore.Signal(str, bool)
+    rename_requested = QtCore.Signal(str)
 
     def __init__(self, instance, group_icon, parent):
         super(InstanceCardWidget, self).__init__(parent)
@@ -509,6 +514,15 @@ class InstanceCardWidget(CardWidget):
         self._update_subset_name()
         self.set_active(self.instance["active"])
         self._validate_context()
+
+    def contextMenuEvent(self, event):
+        menu = QtWidgets.QMenu(self)
+        rename_action = menu.addAction(
+            "Rename product" if AYON_SERVER_ENABLED else "Rename subset"
+        )
+        result = menu.exec_(event.globalPos())
+        if result is rename_action:
+            self.rename_requested.emit(self._id)
 
     def _set_expanded(self, expanded=None):
         if expanded is None:
@@ -714,6 +728,7 @@ class InstanceCardView(AbstractInstanceView):
                     group_icons, group_name, self._content_widget
                 )
                 group_widget.active_changed.connect(self._on_active_changed)
+                group_widget.rename_requested.connect(self._on_rename_request)
                 group_widget.selected.connect(self._on_widget_selection)
                 self._content_layout.insertWidget(widget_idx, group_widget)
                 self._widgets_by_group[group_name] = group_widget
@@ -787,6 +802,10 @@ class InstanceCardView(AbstractInstanceView):
         """Trigger update of instances on group widgets."""
         for widget in self._widgets_by_group.values():
             widget.update_instance_values()
+
+    def _on_rename_request(self, instance_id):
+        if show_subset_rename_dialog(self._controller, instance_id, self):
+            self.instance_context_changed.emit()
 
     def _on_active_changed(self, group_name, instance_id, value):
         group_widget = self._widgets_by_group[group_name]

@@ -320,10 +320,61 @@ class ChangeViewBtn(PublishIconBtn):
         self.setToolTip("Swap between views")
 
 
+def show_subset_rename_dialog(controller, instance_id, parent):
+    """Ask for a new subset name and apply it on an instance.
+
+    Args:
+        controller (PublisherController): Controller holding the instances.
+        instance_id (str): Id of instance to rename.
+        parent (QtWidgets.QWidget): Parent widget for the dialog.
+
+    Returns:
+        bool: Subset name of the instance was changed.
+    """
+
+    instance = controller.instances.get(instance_id)
+    if instance is None:
+        return False
+
+    item_label = "product" if AYON_SERVER_ENABLED else "subset"
+    title = "Rename {}".format(item_label)
+    label = "New {} name:".format(item_label)
+    compiled_pattern = re.compile(
+        "^[{}]+$".format(SUBSET_NAME_ALLOWED_SYMBOLS)
+    )
+
+    current_value = instance["subset"]
+    while True:
+        new_name, ok = QtWidgets.QInputDialog.getText(
+            parent, title, label, QtWidgets.QLineEdit.Normal, current_value
+        )
+        if not ok:
+            return False
+
+        if compiled_pattern.match(new_name):
+            break
+
+        current_value = new_name
+        QtWidgets.QMessageBox.warning(
+            parent,
+            "Invalid {} name".format(item_label),
+            (
+                "Entered {} name is not valid.\nAllowed symbols are: {}"
+            ).format(item_label, SUBSET_NAME_ALLOWED_SYMBOLS)
+        )
+
+    if new_name == instance["subset"]:
+        return False
+
+    instance["subset"] = new_name
+    return True
+
+
 class AbstractInstanceView(QtWidgets.QWidget):
     """Abstract class for instance view in creation part."""
     selection_changed = QtCore.Signal()
     active_changed = QtCore.Signal()
+    instance_context_changed = QtCore.Signal()
     # Refreshed attribute is not changed by view itself
     # - widget which triggers `refresh` is changing the state
     # TODO store that information in widget which cares about refreshing

@@ -26,10 +26,11 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from openpype import AYON_SERVER_ENABLED
 from openpype.style import get_objected_colors
 from openpype.widgets.nice_checkbox import NiceCheckbox
 from openpype.tools.utils.lib import html_escape, checkstate_int_to_enum
-from .widgets import AbstractInstanceView
+from .widgets import AbstractInstanceView, show_subset_rename_dialog
 from ..constants import (
     INSTANCE_ID_ROLE,
     SORT_VALUE_ROLE,
@@ -317,6 +318,7 @@ class InstanceListGroupWidget(QtWidgets.QFrame):
 class InstanceTreeView(QtWidgets.QTreeView):
     """View showing instances and their groups."""
     toggle_requested = QtCore.Signal(int)
+    rename_requested = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs):
         super(InstanceTreeView, self).__init__(*args, **kwargs)
@@ -371,6 +373,27 @@ class InstanceTreeView(QtWidgets.QTreeView):
             return True
 
         return super(InstanceTreeView, self).event(event)
+
+    def contextMenuEvent(self, event):
+        index = self.indexAt(event.pos())
+        instance_id = index.data(INSTANCE_ID_ROLE)
+        if (
+            not index.isValid()
+            or index.data(IS_GROUP_ROLE)
+            or index.data(CONVERTER_IDENTIFIER_ROLE) is not None
+            or instance_id is None
+            or instance_id == CONTEXT_ID
+        ):
+            super(InstanceTreeView, self).contextMenuEvent(event)
+            return
+
+        menu = QtWidgets.QMenu(self)
+        rename_action = menu.addAction(
+            "Rename product" if AYON_SERVER_ENABLED else "Rename subset"
+        )
+        result = menu.exec_(event.globalPos())
+        if result is rename_action:
+            self.rename_requested.emit(instance_id)
 
     def _mouse_press(self, event):
         """Store index of pressed group.
@@ -454,6 +477,7 @@ class InstanceListView(AbstractInstanceView):
         instance_view.collapsed.connect(self._on_collapse)
         instance_view.expanded.connect(self._on_expand)
         instance_view.toggle_requested.connect(self._on_toggle_request)
+        instance_view.rename_requested.connect(self._on_rename_request)
 
         self._group_items = {}
         self._group_widgets = {}
@@ -515,6 +539,10 @@ class InstanceListView(AbstractInstanceView):
 
         for group_name in group_names:
             self._update_group_checkstate(group_name)
+
+    def _on_rename_request(self, instance_id):
+        if show_subset_rename_dialog(self._controller, instance_id, self):
+            self.instance_context_changed.emit()
 
     def _update_group_checkstate(self, group_name):
         """Update checkstate of one group."""
