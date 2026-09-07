@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import contextlib
 import os
 
 from maya import cmds  # noqa
@@ -25,18 +26,19 @@ class ExtractFBXAnimation(publish.Extractor):
     hosts = ["maya"]
     families = ["animation.fbx"]
 
-    # Attributes the rig may drive through a connection, which is not
-    # duplicated, so they are copied as static values.
-    joint_display_attributes = [
+    # Attributes the rig may drive through a connection on the skeleton
+    # hierarchy, which is not duplicated, so they are copied as static values.
+    skeleton_display_attributes = [
         "radius",
         "segmentScaleCompensate"
     ]
 
     # The rig usually hides its bind skeleton, but an exported skeleton
-    # is expected to draw as bones.
-    joint_display_overrides = {
+    # hierarchy is expected to be visible and draw its joints as bones.
+    skeleton_display_overrides = {
         "drawStyle": 0,
-        "visibility": True
+        "visibility": True,
+        "overrideEnabled": False
     }
 
     def process(self, instance):
@@ -102,29 +104,30 @@ class ExtractFBXAnimation(publish.Extractor):
 
             resolved_roots = skeleton_roots.get(skeleton_set) or []
             exported = False
-            if resolved_roots and not include_mesh:
-                exported = self.export_duplicated_skeleton(
-                    fbx_exporter, resolved_roots, path, start, end
-                )
-            elif resolved_roots:
-                self.log.warning(
-                    "Skeleton mesh is included so the skeleton can not be "
-                    "duplicated; the rig groups above the skeleton root "
-                    "will be part of the FBX."
-                )
+            with self.visible_display_layers():
+                if resolved_roots and not include_mesh:
+                    exported = self.export_duplicated_skeleton(
+                        fbx_exporter, resolved_roots, path, start, end
+                    )
+                elif resolved_roots:
+                    self.log.warning(
+                        "Skeleton mesh is included so the skeleton can not be "
+                        "duplicated; the rig groups above the skeleton root "
+                        "will be part of the FBX."
+                    )
 
-            if not exported:
-                # FBX export selected also writes the ancestors of the
-                # selection, so the roots are un-parented to world to
-                # keep the groups above them out of the export.
-                roots = self.get_reparentable_roots(resolved_roots)
-                with parent_nodes(roots):
-                    with namespaced(
-                        ":" + namespace,
-                        new=False,
-                        relative_names=True
-                    ) as namespace:
-                        fbx_exporter.export(relative_out_members, path)
+                if not exported:
+                    # FBX export selected also writes the ancestors of the
+                    # selection, so the roots are un-parented to world to
+                    # keep the groups above them out of the export.
+                    roots = self.get_reparentable_roots(resolved_roots)
+                    with parent_nodes(roots):
+                        with namespaced(
+                            ":" + namespace,
+                            new=False,
+                            relative_names=True
+                        ) as namespace:
+                            fbx_exporter.export(relative_out_members, path)
 
             representations.append({
                 'name': skeleton_set,
@@ -224,11 +227,12 @@ class ExtractFBXAnimation(publish.Extractor):
     def export_duplicated_skeleton(
         self, fbx_exporter, roots, path, start, end
     ):
-        """Export a baked world-level duplicate of the skeleton.
+        """Export a baked world-level duplicate of the skeleton hierarchy.
 
-        A referenced skeleton can not be un-parented, so a duplicate is
-        constrained to the rig and baked. The duplicate lives at world
-        level without a namespace, so the FBX root is the skeleton root.
+        A referenced skeleton can not be un-parented, so a duplicate of
+        its hierarchy nodes is constrained to the rig and baked. The
+        duplicate lives at world level without a namespace, so the FBX
+        root is the skeleton root.
 
         Args:
             fbx_exporter (fbx.FBXExtractor): Exporter to export with.
@@ -243,7 +247,7 @@ class ExtractFBXAnimation(publish.Extractor):
         duplicate_uuids = []
         constraints = []
         try:
-            baked_joints = []
+            baked_nodes = []
             for root in roots:
                 duplicate = cmds.duplicate(
                     root, returnRootsOnly=True, upstreamNodes=False
@@ -254,35 +258,38 @@ class ExtractFBXAnimation(publish.Extractor):
                 if cmds.listRelatives(duplicate, parent=True):
                     duplicate = cmds.parent(duplicate, world=True)[0]
 
-                # Anything that is not a joint would only bloat the
-                # export and can not be constrained reliably.
+                # Geometry is not wanted in this code path, but the
+                # transforms and locators of the hierarchy are kept.
                 clutter = [
                     node for node in cmds.listRelatives(
                         duplicate, allDescendents=True, fullPath=True
                     ) or []
-                    if not cmds.objectType(node, isAType="joint")
+                    if not cmds.objectType(node, isAType="transform")
+                    and cmds.objectType(node) != "locator"
                 ]
+                # Deleting a parent already removed its children.
+                clutter = cmds.ls(clutter, long=True)
                 if clutter:
                     cmds.delete(clutter)
 
-                source_joints = self.get_joint_hierarchy(root)
-                target_joints = self.get_joint_hierarchy(duplicate)
-                if len(source_joints) != len(target_joints):
+                source_nodes = self.get_transform_hierarchy(root)
+                target_nodes = self.get_transform_hierarchy(duplicate)
+                if len(source_nodes) != len(target_nodes):
                     self.log.warning(
-                        "Duplicated skeleton of {} does not match the "
-                        "source hierarchy; exporting from the rig "
+                        "Duplicated skeleton hierarchy of {} does not match "
+                        "the source hierarchy; exporting from the rig "
                         "instead.".format(root)
                     )
                     return False
 
-                target_joints = self.strip_namespaces(target_joints)
+                target_nodes = self.strip_namespaces(target_nodes)
 
-                for source, target in zip(source_joints, target_joints):
+                for source, target in zip(source_nodes, target_nodes):
                     self.copy_attributes(
-                        source, target, self.joint_display_attributes
+                        source, target, self.skeleton_display_attributes
                     )
                     self.set_attributes(
-                        target, self.joint_display_overrides
+                        target, self.skeleton_display_overrides
                     )
                     constraints.extend(
                         cmds.parentConstraint(source, target)
@@ -290,10 +297,10 @@ class ExtractFBXAnimation(publish.Extractor):
                     constraints.extend(
                         cmds.scaleConstraint(source, target)
                     )
-                baked_joints.extend(target_joints)
+                baked_nodes.extend(target_nodes)
 
             cmds.bakeResults(
-                baked_joints,
+                baked_nodes,
                 simulation=True,
                 time=(start, end),
                 sampleBy=1,
@@ -321,20 +328,46 @@ class ExtractFBXAnimation(publish.Extractor):
             if existing:
                 cmds.delete(existing)
 
-    def get_joint_hierarchy(self, root):
-        """Return the root joint and all its descendant joints.
+    def get_transform_hierarchy(self, root):
+        """Return the root and all its descendant transforms.
+
+        Joints are transforms too, so groups, locators and joints are
+        all collected.
 
         Args:
-            root (str): Root joint to collect from.
+            root (str): Root node to collect from.
 
         Returns:
-            list: Long names of the joints in the hierarchy.
+            list: Long names of the transforms in the hierarchy.
         """
-        joints = cmds.ls(root, long=True)
-        joints += cmds.listRelatives(
-            root, allDescendents=True, type="joint", fullPath=True
+        nodes = cmds.ls(root, long=True)
+        nodes += cmds.listRelatives(
+            root, allDescendents=True, type="transform", fullPath=True
         ) or []
-        return joints
+        return nodes
+
+    @contextlib.contextmanager
+    def visible_display_layers(self):
+        """Temporarily turn on all display layers in the scene.
+
+        A hidden display layer is exported into the FBX with its
+        visibility off, which hides the imported skeleton.
+        """
+        originals = []
+        for layer in cmds.ls(type="displayLayer"):
+            plug = "{}.visibility".format(layer)
+            value = cmds.getAttr(plug)
+            if value:
+                continue
+
+            originals.append((plug, value))
+            self.set_attribute(plug, True)
+
+        try:
+            yield
+        finally:
+            for plug, value in originals:
+                self.set_attribute(plug, value)
 
     def strip_namespaces(self, nodes):
         """Rename nodes so they no longer carry a namespace.
