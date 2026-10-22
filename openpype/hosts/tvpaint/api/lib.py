@@ -39,12 +39,17 @@ def parse_layers_data(data):
         layer_raw = layer_raw.strip()
         if not layer_raw:
             continue
+        parts = layer_raw.split("|")
+        # Layer name may contain "|" - rejoin middle parts into name
         (
-            layer_id, group_id, visible, position, opacity, name,
+            layer_id, group_id, visible, position, opacity
+        ) = parts[:5]
+        name = "|".join(parts[5:-10])
+        (
             layer_type,
             frame_start, frame_end, prelighttable, postlighttable,
             selected, editable, sencil_state, is_current, density
-        ) = layer_raw.split("|")
+        ) = parts[-10:]
         layer = {
             "layer_id": int(layer_id),
             "group_id": int(group_id),
