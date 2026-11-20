@@ -1,6 +1,7 @@
-"""Tests for the Resolve menu topmost-window sync."""
+"""Tests for the Resolve menu topmost-window sync and workfile auto export."""
 import importlib.util
 import os
+import tempfile
 import unittest
 from unittest import mock
 from unittest.mock import MagicMock, call
@@ -179,6 +180,346 @@ class TestOnResolveExit(unittest.TestCase):
             [call.closeAllWindows(), call.quit()],
             application.mock_calls,
         )
+
+
+class TestParseDblistRoots(unittest.TestCase):
+    def test_returns_unique_disk_roots_with_drive_colon_restored(self):
+        text = "\n".join([
+            "Local Database:C\\Users\\admin\\AppData\\Roaming\\Blackmagic "
+            "Design\\DaVinci Resolve\\Support\\Resolve Project Library"
+            ":*:::DISK",
+            "Studio:10.0.0.5:resolve_db:postgres:secret:PG",
+            "Copy:C\\Users\\admin\\AppData\\Roaming\\Blackmagic "
+            "Design\\DaVinci Resolve\\Support\\Resolve Project Library"
+            ":*:::DISK",
+        ])
+
+        self.assertEqual(
+            [
+                "C:\\Users\\admin\\AppData\\Roaming\\Blackmagic Design"
+                "\\DaVinci Resolve\\Support\\Resolve Project Library"
+            ],
+            menu.parse_dblist_roots(text),
+        )
+
+
+def _make_project_db(root, *project_parts):
+    folder = os.path.join(
+        root, "Resolve Projects", "Users", "guest", "Projects",
+        *project_parts
+    )
+    os.makedirs(folder)
+    path = os.path.join(folder, "Project.db")
+    with open(path, "w"):
+        pass
+    return path
+
+
+class TestFindProjectDb(unittest.TestCase):
+    def setUp(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        self.root = tempdir.name
+
+    def test_finds_project_directly_in_projects(self):
+        expected = _make_project_db(self.root, "shot010")
+
+        self.assertEqual(
+            os.path.normcase(expected),
+            os.path.normcase(menu.find_project_db("shot010", [self.root])),
+        )
+
+    def test_finds_project_in_nested_folder(self):
+        expected = _make_project_db(self.root, "Folder", "shot010")
+
+        self.assertEqual(
+            os.path.normcase(expected),
+            os.path.normcase(menu.find_project_db("shot010", [self.root])),
+        )
+
+    def test_returns_none_when_project_is_missing(self):
+        _make_project_db(self.root, "other")
+
+        self.assertIsNone(menu.find_project_db("shot010", [self.root]))
+
+    def test_project_name_with_glob_characters_is_matched_literally(self):
+        _make_project_db(self.root, "x")
+        expected = _make_project_db(self.root, "shot[x]")
+
+        self.assertEqual(
+            os.path.normcase(expected),
+            os.path.normcase(menu.find_project_db("shot[x]", [self.root])),
+        )
+
+
+class TestProjectDbLocator(unittest.TestCase):
+    def test_caches_path_and_searches_again_when_it_disappears(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        get_roots = MagicMock(return_value=[tempdir.name])
+        locator = menu.ProjectDbLocator(get_roots=get_roots)
+        first = _make_project_db(tempdir.name, "shot010")
+
+        self.assertEqual(first, locator("shot010"))
+        self.assertEqual(first, locator("shot010"))
+        self.assertEqual(1, get_roots.call_count)
+
+        os.remove(first)
+        moved = _make_project_db(tempdir.name, "Folder", "shot010")
+
+        self.assertEqual(
+            os.path.normcase(moved), os.path.normcase(locator("shot010"))
+        )
+
+
+DEBOUNCE = 10
+MIN_INTERVAL = 60
+
+
+class TestWorkfileAutoExporter(unittest.TestCase):
+    """Drives `WorkfileAutoExporter` with a fake clock and filesystem.
+
+    Project `<name>` has its workfile at `<name>.drp` and its database at
+    `<name>/Project.db`; a file exists when it has an entry in `mtimes`.
+    """
+
+    def setUp(self):
+        self.now = 1000.0
+        self.project = "shot010"
+        self.mtimes = {}
+        self.export = MagicMock()
+        self.on_exported = MagicMock()
+        self.db_type = "Disk"
+        self.on_unavailable = MagicMock()
+        self.on_available = MagicMock()
+        self.exporter = menu.WorkfileAutoExporter(
+            get_project_name=lambda: self.project,
+            get_workfile_path=lambda: self._drp(self.project),
+            find_project_db=lambda name: (
+                self._db(name) if self._db(name) in self.mtimes else None
+            ),
+            export=self.export,
+            clock=lambda: self.now,
+            getmtime=lambda path: self.mtimes[path],
+            exists=lambda path: path in self.mtimes,
+            debounce=DEBOUNCE,
+            min_interval=MIN_INTERVAL,
+            on_exported=self.on_exported,
+            get_db_type=lambda: self.db_type,
+            on_unavailable=self.on_unavailable,
+            on_available=self.on_available,
+        )
+        patcher = mock.patch.object(menu, "log")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def _drp(project):
+        return f"{project}.drp" if project else None
+
+    @staticmethod
+    def _db(project):
+        return f"{project}/Project.db"
+
+    def _set_files(self, db=None, drp=None, project=None):
+        project = project or self.project
+        if db is not None:
+            self.mtimes[self._db(project)] = db
+        if drp is not None:
+            self.mtimes[self._drp(project)] = drp
+
+    def _export_writes_drp(self, path):
+        self.mtimes[path] = self.now
+
+    def test_exports_when_db_is_newer_than_workfile_and_settled(self):
+        self._set_files(db=900, drp=800)
+
+        self.assertTrue(self.exporter.tick())
+
+        self.export.assert_called_once_with("shot010.drp")
+        self.on_exported.assert_called_once_with()
+
+    def test_does_not_export_when_workfile_is_newer_than_db(self):
+        self._set_files(db=800, drp=900)
+
+        self.assertFalse(self.exporter.tick())
+
+        self.export.assert_not_called()
+
+    def test_does_not_export_when_workfile_does_not_exist(self):
+        self._set_files(db=900)
+
+        self.assertFalse(self.exporter.tick())
+
+        self.export.assert_not_called()
+
+    def test_waits_for_debounce_before_exporting(self):
+        self._set_files(db=995, drp=800)
+
+        self.assertFalse(self.exporter.tick())
+        self.export.assert_not_called()
+
+        self.now = 1005.0
+        self.assertTrue(self.exporter.tick())
+        self.export.assert_called_once_with("shot010.drp")
+
+    def test_db_touched_by_export_does_not_retrigger_but_new_save_does(self):
+        self._set_files(db=900, drp=800)
+
+        def export(path):
+            # Exporting writes the workfile and then touches the db.
+            self.mtimes[path] = self.now
+            self.mtimes[self._db(self.project)] = self.now + 1
+
+        self.export.side_effect = export
+
+        self.assertTrue(self.exporter.tick())
+
+        self.now = 1100.0
+        self.assertFalse(self.exporter.tick())
+        self.assertEqual(1, self.export.call_count)
+
+        self._set_files(db=1200)
+        self.now = 1300.0
+        self.assertTrue(self.exporter.tick())
+        self.assertEqual(2, self.export.call_count)
+
+    def test_respects_min_interval_between_exports(self):
+        self._set_files(db=900, drp=800)
+        self.export.side_effect = self._export_writes_drp
+        self.assertTrue(self.exporter.tick())
+
+        self._set_files(db=1020)
+        self.now = 1035.0
+        self.assertFalse(self.exporter.tick())
+        self.assertEqual(1, self.export.call_count)
+
+        self.now = 1000.0 + MIN_INTERVAL
+        self.assertTrue(self.exporter.tick())
+        self.assertEqual(2, self.export.call_count)
+
+    def test_failed_export_returns_false_and_backs_off(self):
+        self._set_files(db=900, drp=800)
+        self.export.side_effect = RuntimeError("export failed")
+
+        self.assertFalse(self.exporter.tick())
+        self.on_exported.assert_not_called()
+
+        self.now = 1030.0
+        self.assertFalse(self.exporter.tick())
+        self.assertEqual(1, self.export.call_count)
+
+        self.now = 1000.0 + MIN_INTERVAL
+        self.exporter.tick()
+        self.assertEqual(2, self.export.call_count)
+
+    def test_does_not_export_untitled_or_missing_project(self):
+        for project in (None, "Untitled Project"):
+            with self.subTest(project=project):
+                self.project = project
+                self._set_files(db=900, drp=800, project=str(project))
+
+                self.assertFalse(self.exporter.tick())
+
+        self.export.assert_not_called()
+
+    def test_switching_project_resets_export_state(self):
+        self._set_files(db=900, drp=800)
+        self.export.side_effect = self._export_writes_drp
+        self.assertTrue(self.exporter.tick())
+
+        self.project = "shot020"
+        self._set_files(db=900, drp=800)
+        self.now = 1010.0
+
+        self.assertTrue(self.exporter.tick())
+        self.export.assert_called_with("shot020.drp")
+
+    def test_postgresql_database_reports_unavailable_once(self):
+        self.db_type = "PostgreSQL"
+        self._set_files(db=900, drp=800)
+
+        self.assertFalse(self.exporter.tick())
+        self.now = 1100.0
+        self.assertFalse(self.exporter.tick())
+
+        self.export.assert_not_called()
+        self.on_unavailable.assert_called_once()
+        self.assertIn("PostgreSQL", self.on_unavailable.call_args[0][0])
+        self.on_available.assert_not_called()
+
+    def test_missing_project_db_reports_unavailable(self):
+        self._set_files(drp=800)
+
+        self.assertFalse(self.exporter.tick())
+
+        self.on_unavailable.assert_called_once_with(
+            "local project file not found"
+        )
+
+    def test_reports_available_when_project_db_appears(self):
+        self._set_files(drp=800)
+        self.exporter.tick()
+
+        self._set_files(db=900)
+        self.exporter.tick()
+        self.exporter.tick()
+
+        self.on_unavailable.assert_called_once()
+        self.on_available.assert_called_once_with()
+
+    def test_switching_to_available_project_reports_available(self):
+        self._set_files(drp=800)
+        self.exporter.tick()
+
+        self.project = "shot020"
+        self._set_files(db=900, drp=800)
+        self.exporter.tick()
+
+        self.on_unavailable.assert_called_once()
+        self.on_available.assert_called_once_with()
+
+    def test_no_workfile_or_untitled_project_reports_nothing(self):
+        self.db_type = "PostgreSQL"
+        for project in ("shot010", "Untitled Project"):
+            with self.subTest(project=project):
+                self.project = project
+                self._set_files(db=900)
+
+                self.assertFalse(self.exporter.tick())
+
+        self.on_unavailable.assert_not_called()
+        self.on_available.assert_not_called()
+
+
+class TestOpenPypeMenuSaveStatus(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls.app = (
+            menu.QtWidgets.QApplication.instance()
+            or menu.QtWidgets.QApplication([])
+        )
+
+    def setUp(self):
+        self.widget = menu.OpenPypeMenu()
+        self.addCleanup(self.widget.deleteLater)
+        self.label = self.widget._save_status_label
+
+    def test_warning_is_shown_under_save_status_and_can_be_cleared(self):
+        self.widget.set_save_status("Saved")
+        saved = self.label.text()
+
+        self.widget.set_auto_save_warning("PostgreSQL database")
+
+        lines = self.label.text().split("\n")
+        self.assertEqual(saved, lines[0])
+        self.assertTrue(saved.startswith("Saved "))
+        self.assertIn("PostgreSQL database", lines[1])
+
+        self.widget.set_auto_save_warning(None)
+
+        self.assertEqual(saved, self.label.text())
 
 
 if __name__ == "__main__":
